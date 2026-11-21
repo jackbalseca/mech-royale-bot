@@ -59,6 +59,10 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v44 (our own idea): the mortar keeps proving its worth (no-mortar lost 3 times), but since v28 practice targets are
+# always visible, so our lob-over-cover branch never ran. With nothing visible to shoot, lob at the most recently seen
+# hostile mech (seen < 3 s ago, 30-220 m) at its last known position. No movement change.
+V44_LOB = True
 
 
 def wrap(a):
@@ -450,6 +454,18 @@ class Bot:
             # lob over cover at a mech we know about but can't see
             m, c, d, _ = target
             if 30 < d < 220:
+                sol = self.mortar_pitch(pos, c, mortar["stats"], high=True)
+                if sol is not None:
+                    aim = [yaw_to(muzzle, c), sol]
+                    if abs(wrap(me["aim"][0] - aim[0])) < 0.03 and abs(me["aim"][1] - sol) < 0.03:
+                        fire[mi] = True
+        elif (V44_LOB and target is None and mortar is not None and mortar.get("cooldown", 0) <= 0
+              and not ffa and self.enemy_seen):
+            cands = [(t - v[0], k, v) for k, v in self.enemy_seen.items()
+                     if t - v[0] < 3.0 and t - self.hostile.get(k, -99) < 12.0 and 30 < hdist(p2, v[1]) < 220]
+            if cands:
+                _, _k, v = min(cands)
+                c = [v[1][0], v[1][1], v[1][2] + 4.5]
                 sol = self.mortar_pitch(pos, c, mortar["stats"], high=True)
                 if sol is not None:
                     aim = [yaw_to(muzzle, c), sol]
