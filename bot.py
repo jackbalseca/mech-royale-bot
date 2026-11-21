@@ -581,7 +581,7 @@ class Bot:
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
             d = hdist(p2, pk["pos"])
-            if d > (160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
+            if d > (60 if None in kinds else 40) or hdist(pk["pos"], c_soon) > r_soon - 8:  # v17a: less roaming for loot
                 continue
             gain = self.loadout_gain(kinds, k)
             if gain <= 0:
