@@ -55,6 +55,9 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v37 (audit of the v28 port vs giddygiddyboy e19e3c8, MIT): aim/fire fidelity fixes
+V37_AIMFIX = True  # (a) aim high when only the top of a target clears a wall, (b) strict laser release,
+                   # (c) keep leading for the gun until the laser charge passes 45% (or a lethal release fires)
 
 
 def wrap(a):
@@ -160,10 +163,12 @@ class Bot:
     def aim_vec(self, yaw, pitch):
         return (math.cos(pitch) * math.cos(yaw), math.cos(pitch) * math.sin(yaw), math.sin(pitch))
 
-    def aim_err_ok(self, me, want_yaw, want_pitch, dist, radius, height):
+    def aim_err_ok(self, me, want_yaw, want_pitch, dist, radius, height, slew=True):
         ay, ap = me["aim"]
         ey = abs(wrap(ay - want_yaw))
         ep = abs(ap - want_pitch)
+        if V28_AIM and not slew:  # v37: the laser beam leaves along our actual aim: no turning allowance
+            return ey < 0.9 * math.atan2(radius * 0.75, max(dist, 1.0)) and ep < math.atan2(height * 0.4, max(dist, 1.0))
         if V28_AIM:  # on target within the next 50 ms of turning (giddygiddyboy "slew")
             st = me.get("stats", {})
             ey = max(0.0, ey - st.get("turn_rate", 4.0) * 0.05)
@@ -294,7 +299,14 @@ class Bot:
                     continue
             elif not ffa and not hostile and not d < 25:
                 continue  # leave passive mechs alone: shooting them only brings more enemies
-            vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
+            if V37_AIMFIX:  # v37: if only the top clears a wall, aim at the top (0.85 h, scaled by cubes)
+                mh = self.cfg.get("mech", {}).get("height", 9.0) * (1 + self.cfg.get("cubes", {}).get("size_per_cube", 0.0) * m.get("cubes", 0))
+                hi = [c[0], c[1], m["pos"][2] + 0.85 * mh]
+                vis = self.world.los(muzzle, c)
+                if not vis and self.world.los(muzzle, hi):
+                    vis, c, d = True, hi, math.dist(muzzle, hi)
+            else:
+                vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             if v28:
                 if not vis:
                     continue  # never chase a hidden target in practice
@@ -397,7 +409,10 @@ class Bot:
                     lead_pitch = math.atan2(q[2] - mz[2], max(hdist(mz, q), 0.1))
             laser_ready = laser is not None and (laser.get("cooldown", 0) < 0.4 or laser.get("charge", 0) > 0) and d < laser["stats"]["range"]
             light_in = light is not None and d < light["stats"]["range"] * 0.95 and me["energy"] > 6
-            if light_in or laser_ready:
+            if V37_AIMFIX and V28_AIM:  # v37: Go keeps the gun lead unless the laser is >45% charged
+                hot = laser is not None and laser.get("charge", 0) > 0.45 * laser["stats"].get("charge", 0.75)
+                aim = [direct_yaw, direct_pitch] if (hot or not gun) else [lead_yaw, lead_pitch]
+            elif light_in or laser_ready:
                 aim = [direct_yaw, direct_pitch]
             elif gun:
                 aim = [lead_yaw, lead_pitch]
@@ -411,7 +426,7 @@ class Bot:
             if laser is not None and d < laser["stats"]["range"]:
                 ch = laser.get("charge", 0)
                 full = laser["stats"].get("charge", 0.75)
-                on = self.aim_err_ok(me, direct_yaw, direct_pitch, d, rad, hgt)
+                on = self.aim_err_ok(me, direct_yaw, direct_pitch, d, rad, hgt, slew=not (V37_AIMFIX and V28_AIM))
                 ls = laser["stats"]
                 lethal = False
                 if V27_LETHAL and is_mech and ls.get("min_charge", 0.15) <= ch < full - 0.051:
@@ -423,6 +438,8 @@ class Bot:
                     lethal = dmg * 0.7 >= m.get("hp", 1400) and on
                 if lethal:
                     fire[li] = False  # let go now: this partial charge already kills
+                    if V37_AIMFIX:
+                        aim = [direct_yaw, direct_pitch]
                 elif ch > 0:
                     fire[li] = not (ch >= full * 0.97 and on)
                 elif laser.get("cooldown", 0) <= 0.05 and (is_mech or m.get("kind") == "npc"):
