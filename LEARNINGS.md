@@ -1,7 +1,7 @@
 # LEARNINGS.md: what the official scorer has taught us (team V.exe)
 
 Read this before proposing any change. It is the evidence behind every rule in `CLAUDE.md`.
-Last updated: Sat Nov 21, 5:16 AM ET.
+Last updated: Sat Nov 21, 6:19 AM ET.
 
 ## How the official practice score behaves
 - **It is deterministic.** Practice runs the same 48 private seeds every time. Resubmitting identical behaviour
@@ -36,6 +36,10 @@ Last updated: Sat Nov 21, 5:16 AM ET.
 | v24 `7034345` | **bundle** (team decision, not one change): heal + keep-gun + bullet dodge | 4.31 | +0.10 vs v19 | no effect as a whole; the ablations separate the parts |
 | v24a `a941c5d` | v24 without bullet dodge (heal + keep-gun) | 3.81 | -0.50 vs v24 | reject: **dodge is worth ~+0.5**. 3.81 = v3/v6 by coincidence (183/48), very different builds |
 | **v24b `cfd3911`** | **v24 without heal (keep-gun + bullet dodge)** | **4.50** | +0.19 vs v24, +0.29 vs v19 | **keep: heal costs ~0.19. Current best / baseline** |
+| v25 `d57c157` | **bundle** from v24b: laser dodge + laser seek to 240 m + never take a mortar | 4.02 | -0.48 vs v24b | reject; the ablations separate the parts |
+| v25a `343ecad` | v25 without laser dodge | 4.10 | +0.08 vs v25 | laser dodge: **no effect** (noise) |
+| v25b `d8766a6` | v25 without laser seek | 4.25 | +0.23 vs v25 | laser seek to 240 m **costs ~0.23** |
+| v25c `8a73e9b` | v25 without no-mortar (takes mortars again) | 4.17 | +0.15 vs v25 | refusing mortars **costs ~0.15**. Parts add up (0.46 vs 0.48 drop): small interactions |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -55,12 +59,17 @@ Roaming for drones/crates/cubes (v14) is what hurts, not fetching a laser/lightn
 **Confirmed by v19 (Sat 1:58 AM):** remembering weapons we saw and fetching one when a slot is empty gave +0.19.
 Weapon acquisition is our strongest lever so far.
 
+**Refined by v25 + ablations (Sat 6:19 AM):** only *nearby* weapon pickups pay (v19: remembered pickups within the usual
+160/90 m). Long walks don't: seeking the first laser up to 240 m cost ~0.23 (v25b). Empty slots don't either: refusing mortars,
+which leaves a slot empty, cost ~0.15 (v25c). Any second weapon beats none.
+
 **Learned from v24 + ablations (Sat 5:16 AM):** **dodging inside fights pays**: the bullet sidestep is worth about +0.50
 (v24 4.31 -> 3.81 without it), our largest single gain. **Passive hiding/healing costs**: the heal mode (no farming,
 hide in cover or stand still while hurt) is worth about -0.19 (4.31 -> 4.50 without it), because the hunters always know
 where we are, so standing still does not keep us hidden. Keep-gun barely fires (4 blocked swaps in 16 sim matches): treat it
 as neutral. The sim predicted the dodge would hurt (more die-first, earlier deaths); it was wrong again.
 So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
+**Bullet dodge (v24b, +0.29 vs v19) is the strongest lever so far.** Extending it to laser charges (v25 laser dodge) added nothing.
 
 **Rule of thumb:** win the fight you're in quickly, then stay out of sight and don't roam. Don't roam, don't make noise,
 don't start optional fights. Gunfire is heard 320 m away, and being seen by one squad bot tips off the hunters.
@@ -73,8 +82,15 @@ don't start optional fights. Gunfire is heard 320 m away, and being seen by one 
   jitters in place, which is easy to lead.
 - **Weapon-rank tweaks** (v13, not submitted): `WEAPON_RANK` mainly controls *swaps*. Setting gun=0 made us
   trade the gun for a mortar. Check `loadout_gain()` effects before changing ranks.
-- **Holding still to heal** (v5/v9, sim only): removed the recovery "leak", but the sim got worse in exactly the
-  matches where it triggered. **Tried officially as v24's heal mode: about -0.19** (v24 4.31 vs v24b 4.50 without it).
+- **Passive heal / holding still to heal** (v5/v9 in the sim, v24 officially): removed the recovery "leak", but the
+  sim got worse where it triggered, and officially v24's heal mode cost about -0.19 (v24 4.31 vs v24b 4.50 without it).
+  The hunters always know where we are, so hiding to regen doesn't hide us.
+- **Far weapon seeking** (v21 idea, tested in v25): seeking the first laser up to 240 m (also as a swap) cost ~0.23.
+  Long walks across the map expose us. Keep the v19 limits (160 m with an empty slot, 90 m to swap).
+- **Refusing mortars** (v20 idea, tested in v25): never taking a mortar cost ~0.15, despite the laser cook-off risk.
+  A mortar in the slot beats an empty slot.
+- **Laser dodge** (v25): sidestepping any mech charging a laser at us had no effect (+0.08 when removed, noise). The existing
+  strafe already dodges a charging target, so the extra cases are rare or don't matter.
 
 ## Testing tools: what each one can and can't tell you
 | Tool | Good for | Not good for |
