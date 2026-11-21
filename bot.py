@@ -75,6 +75,7 @@ class Bot:
         self.bad_pickups = {}
         self.prev_move = (0.0, 0.0)
         self.recovering = False
+        self.last_npc_dmg_t = None
         self.hostile = {}  # mech id -> last time it shot at / aimed at us
         self.cover = None
         self.cover_t = -99.0
@@ -224,14 +225,20 @@ class Bot:
         # secondary targets: NPCs then crates (only when no mech is around)
         side = None
         recent_enemy = any(t - v[0] < 4.0 and hdist(p2, v[1]) < 160 for v in self.enemy_seen.values())
-        if target is None:
+        # v15 "quiet": no optional gunfire. Shots are heard 320 m away and the practice squad shares what it learns,
+        # so only shoot a drone that is shooting us (self-defence), never crates.
+        npc_attackers = {e.get("by") for e in obs.get("events", []) if e["type"] == "damaged" and e.get("weapon") == "npc"}
+        if self.last_npc_dmg_t is None or npc_attackers:
+            self.last_npc_dmg_t = t if npc_attackers else self.last_npc_dmg_t
+        npc_threat = self.last_npc_dmg_t is not None and t - self.last_npc_dmg_t < 3.0
+        if target is None and npc_threat:
             for n in sorted(npcs, key=lambda n: hdist(p2, n["pos"])):
                 c = self.center_of(n)
                 d = math.dist(muzzle, c)
                 if d < 140 and self.world.los(muzzle, c):
                     side = (n, c, d, True)
                     break
-            if side is None and not recent_enemy:
+            if False:
                 for cr in sorted(obs.get("crates", []), key=lambda c: hdist(p2, c["pos"])):
                     c = [cr["pos"][0], cr["pos"][1], cr["pos"][2] + 1.2]
                     d = math.dist(muzzle, c)
