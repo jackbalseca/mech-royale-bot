@@ -29,9 +29,10 @@ Last updated: Sat Nov 21, 12:55 AM ET.
 | v12 `1c8f31a` | random strafe reversal every 0.35-1.05 s | 3.83 | -0.09 | reject |
 | v14 `c0a7d14` | active farming (walk to drones/crates, cubes to 120 m) | 3.69 | -0.23 | reject |
 | v15 `08fe076` | quiet: no optional gunfire | 3.85 | -0.07 vs v10 | no effect: **sound is not the cost** |
-| **v16 `3881e26`** | **stay put when idle (no drift to the zone hold point)** | **4.02** | +0.10 vs v10 | **keep: current best** (edge of noise, consistent with the exposure pattern) |
+| v16 `3881e26` | stay put when idle (no drift to the zone hold point) | 4.02 | +0.10 vs v10 | keep (edge of noise, consistent with the exposure pattern) |
 | v17a `dd5fc9c` | shorter weapon-pickup search (60/40 m instead of 160/90 m) | 3.75 | -0.27 vs v16 | reject: **weapons are worth the walk** |
-| v18 `6f03444` | upgrade order: plating, nanites, then armor | 3.92 | -0.10 vs v16 | no effect: upgrade order barely matters |
+| v18 `6f03444` | upgrade order: plating, nanites, then armor | 3.92 | -0.10 vs v16 | no effect: upgrade order barely matters | Same 3.92 as v10 with a different build: a repeat by coincidence (188/48), not identical behaviour.
+| **v19 `1db8cb8`** | **remember weapon pickups after they leave view; fetch one when a slot is empty** | **4.21** | +0.19 vs v16 | **keep: current best / baseline** |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -47,6 +48,9 @@ the cost. What hurts is **movement and visibility**: roaming (v14), open-street 
 
 **Exception found by v17a (Sat 1:40 AM):** walking to *weapons* pays; cutting the weapon search to 60/40 m cost -0.27.
 Roaming for drones/crates/cubes (v14) is what hurts, not fetching a laser/lightning/mortar.
+
+**Confirmed by v19 (Sat 1:58 AM):** remembering weapons we saw and fetching one when a slot is empty gave +0.19.
+Weapon acquisition is our strongest lever so far.
 
 **Rule of thumb:** win the fight you're in quickly, then stay out of sight and don't roam. Don't roam, don't make noise,
 don't start optional fights. Gunfire is heard 320 m away, and being seen by one squad bot tips off the hunters.
