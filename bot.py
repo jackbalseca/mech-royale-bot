@@ -28,7 +28,7 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
-V25_LASERDODGE = True
+V25_LASERDODGE = False
 V25_LASERSEEK = True
 V25_NOMORTAR = True
 
