@@ -142,3 +142,59 @@ H.summary = () => {
   for (const k in by) { by[k].mean = +(by[k].pts / by[k].n).toFixed(2); }
   return by;
 };
+
+// ---------------------------------------------------------------------------------------------
+// Spectator-feed recorder: measures REAL house-bot accuracy by tier and distance on the real
+// engine, to calibrate tools/house.py. Feed format (mechreplay/1) and the shot->target matching
+// idea follow jklein07/mech-royale-bot tools/feed.py + aimstats.py (MIT); this JS is ours.
+//   m = [id, x, y, z, yaw, ...] per mech per frame;  ev: {e:"fire", id, w}, {e:"hit", src, dst, w, amt}
+H.aim = H.aim || {};          // key "tier|weapon|bucket" -> {fire, hit}
+H.feeds = H.feeds || 0;
+H.spectate = (room, code) => {
+  const hex = n => Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b => b.toString(16).padStart(2, "0")).join("");
+  const ws = new WebSocket(`wss://${location.host}/r/${room}/live?token=&code=${code}&sid=${hex(16)}`);
+  let hdr = null; const pending = {}; const tierOf = {};
+  const bucket = d => d < 40 ? "000-040" : d < 80 ? "040-080" : d < 120 ? "080-120" : d < 160 ? "120-160" : "160-260";
+  const bump = (k, f) => { const o = H.aim[k] = H.aim[k] || { fire: 0, hit: 0 }; o[f]++; };
+  ws.onmessage = (ev) => {
+    for (const line of String(ev.data).split("\n")) {
+      if (!line.trim()) continue;
+      let x; try { x = JSON.parse(line); } catch (e) { continue; }
+      if (x.type === "header") {
+        hdr = x; H.feeds++;
+        for (const m of x.mechs) { const nm = m.name || ""; const b = (x.bots && x.bots[m.id]) || ""; tierOf[m.id] = (nm.match(/(easy|medium|hard|expert)/) || b.match(/(easy|medium|hard|expert)/) || ["", nm.startsWith("Vexe") ? "ours" : "other"])[1]; }
+        continue;
+      }
+      if (!hdr || !x.m) continue;
+      const cur = {}; for (const m of x.m) cur[m[0]] = m;
+      for (const e of (x.ev || [])) {
+        if (e.e === "fire" && (e.w === "gun" || e.w === "laser") && cur[e.id]) {
+          const s = cur[e.id]; let best = null;
+          for (const id in cur) { const m = cur[id]; if (m[0] === s[0]) continue;
+            const dx = m[1] - s[1], dy = m[2] - s[2], d = Math.hypot(dx, dy); if (d < 1 || d > 280) continue;
+            const ang = Math.abs(((Math.atan2(dy, dx) - s[4] + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+            if (ang < 0.08 && (!best || d < best[1])) best = [m[0], d]; }
+          if (best) { const k = `${tierOf[s[0]] || "?"}|${e.w}|${bucket(best[1])}`; bump(k, "fire"); (pending[s[0]] = pending[s[0]] || []).push([best[0], k, x.t]); }
+        }
+        if (e.e === "hit" && (e.w === "gun" || e.w === "laser") && e.dst != null && e.dst < 16 && pending[e.src]) {
+          const lst = pending[e.src]; const i = lst.findIndex(p => p[0] === e.dst);
+          if (i >= 0) { bump(lst[i][1], "hit"); lst.splice(i, 1); }
+        }
+      }
+    }
+  };
+  return ws;
+};
+H.aimTable = () => Object.keys(H.aim).sort().map(k => `${k}: ${H.aim[k].hit}/${H.aim[k].fire} = ${(H.aim[k].hit / Math.max(1, H.aim[k].fire)).toFixed(2)}`).join("\n");
+// play matches with the spectator recorder attached (same as runMatch, plus H.spectate on the same room)
+H.runMatchSpec = async (ref, name) => {
+  const origFetch = window.fetch;
+  let roomInfo = null;
+  window.fetch = async (...a) => { const r = await origFetch(...a); if (String(a[0]).startsWith("/mm/code/new")) { const c = r.clone(); roomInfo = await c.json(); } return r; };
+  const p = H.runMatch(ref, name);
+  while (!roomInfo) await new Promise(r => setTimeout(r, 50));
+  window.fetch = origFetch;
+  const ws = H.spectate(roomInfo.room, roomInfo.code);
+  const rec = await p; try { ws.close(); } catch (e) {}
+  return rec;
+};
