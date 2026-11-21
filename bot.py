@@ -40,9 +40,9 @@ V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when t
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
 # v29: the rest of giddygiddyboy's practice decision path (MIT License; see CREDITS.md)
-V29_LASERMECH = True  # charge the laser only at mechs (never at drones/crates: half speed + 1.65 s cooldown)
+V29_LASERMECH = False  # charge the laser only at mechs (never at drones/crates: half speed + 1.65 s cooldown)
 V29_SIDE = True       # shoot drones/crates only at >= 50% HP and not retreating, except return fire at a drone hitting us
-V29_RELOAD = True     # with nothing to shoot, reload at <= 60% ammo or after 3 s without threats
+V29_RELOAD = False     # with nothing to shoot, reload at <= 60% ammo or after 3 s without threats
 
 
 def wrap(a):
