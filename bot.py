@@ -46,6 +46,7 @@ def unit(v):
 
 class Bot:
     name = "jb-mech"
+    P = {"range_gun": 130.0, "range_laser": 160.0}
 
     def __init__(self, hello):
         t0 = time.time()
@@ -216,9 +217,7 @@ class Bot:
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60 if vis else 20
-                if t - self.last_dmg[0] < 1.0 and vis:
-                    score -= 120  # it's shooting us right now: face it
+                score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
@@ -444,12 +443,10 @@ class Bot:
                        and self.t_seen(e, t)]
             n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
             # recovering: break line of sight, regen, then come back
-            if (hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7)) and obs["alive"] > 2:
+            if hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7):
                 self.recovering = True
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if obs["alive"] <= 2:
-                self.recovering = False  # last opponent: retreating only gives them free shots
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
@@ -464,22 +461,25 @@ class Bot:
                 mv, wp = self.nav_move(p2, away, onroof)
                 return "retreat", wp, self.strafed(mv, target, t, 0.4), True, False
             kinds = self.slots(me)
-            if "lightning" in kinds and me["energy"] > 25:
-                want = 28.0
-            elif "laser" in kinds:
-                want = 85.0
-            else:
-                want = 60.0
+            # Long-range duelling: house-bot aim error is angular (0.8-3.5 deg), so their misses grow with distance
+            # while our gun (0.6 deg spread + lead) and hitscan laser barely degrade.
+            want = self.P["range_laser"] if "laser" in kinds else self.P["range_gun"]
             if not vis:
                 if self.recovering:
                     return "lurk", None, (0.0, 0.0), False, False
                 mv, wp = self.nav_move(p2, (c[0], c[1]), onroof)
                 return "hunt", wp, mv, False, False
-            if d > want + 15:
+            if d > want + 40:
                 mv, wp = self.nav_move(p2, (c[0], c[1]), onroof)
                 return "close", wp, self.strafed(mv, target, t, 0.5), False, False
-            if d < want - 15:
-                return "space", None, self.strafed((-to[0], -to[1]), target, t, 0.6), False, False
+            if d < want - 20:
+                # backpedal (legs only; the torso keeps shooting), staying inside the zone
+                back = (p2[0] - to[0] * 40.0, p2[1] - to[1] * 40.0)
+                if hdist(back, c_soon) > r_soon * 0.85:
+                    u = unit((back[0] - c_soon[0], back[1] - c_soon[1]))
+                    back = (c_soon[0] + u[0] * r_soon * 0.8, c_soon[1] + u[1] * r_soon * 0.8)
+                mv, wp = self.nav_move(p2, back, onroof)
+                return "kite", wp, self.strafed(mv, target, t, 0.45), d < want - 60 and me["energy"] > 35, False
             return "strafe", None, self.strafed((0.0, 0.0), target, t, 1.0), False, False
         self.recovering = self.recovering and hp_frac < 0.85
         # 3. loot: weapons we want, then cubes
