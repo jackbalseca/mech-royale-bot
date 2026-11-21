@@ -73,6 +73,7 @@ class Bot:
         self.prev_alive = None
         self.scan_phase = self.rng.random() * TAU
         self.bad_pickups = {}
+        self.pk_mem = {}  # v19: id -> (kind, pos, t_seen) for weapon pickups that left view
         self.prev_move = (0.0, 0.0)
         self.recovering = False
         self.hostile = {}  # mech id -> last time it shot at / aimed at us
@@ -146,6 +147,19 @@ class Bot:
             ch = obs["offer"]["choices"]
             rank = {u: i for i, u in enumerate(UPGRADE_PRIORITY)}
             act["pick"] = min(range(len(ch)), key=lambda i: rank.get(ch[i]["id"], 99))
+
+        # ---- v19: remember weapon pickups (obs lists them only while visible)
+        try:
+            vis = set()
+            for pk in obs.get("pickups", []):
+                self.pk_mem[pk["id"]] = (pk["kind"], pk["pos"], t)
+                vis.add(pk["id"])
+            for pid in list(self.pk_mem):
+                _k, ppos, ts = self.pk_mem[pid]
+                if pid not in vis and (hdist(p2, ppos) < 20 or t - ts > 150):
+                    del self.pk_mem[pid]
+        except Exception:
+            pass
 
         # ---- events / memory
         for e in obs.get("events", []):
@@ -576,7 +590,11 @@ class Bot:
     def best_pickup(self, obs, me, p2, c_soon, r_soon):
         kinds = self.slots(me)
         best, bestv = None, 0.0
-        for pk in obs.get("pickups", []):
+        cands = list(obs.get("pickups", []))
+        if None in kinds:  # v19: with an empty slot, also go to weapons we saw earlier
+            vis = {pk["id"] for pk in cands}
+            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items() if i not in vis]
+        for pk in cands:
             k = pk["kind"]
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
