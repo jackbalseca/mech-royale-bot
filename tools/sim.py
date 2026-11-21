@@ -144,6 +144,8 @@ class Sim:
         self.placements = {}
         self.dead_order = []
         self.player_kills = 0
+        self.hunters = set()
+        self.prey_info = None
         # zone schedule
         self.zone_phases = []
         c, r = list(cfg["zone"]["start_center"]), cfg["zone"]["start_radius"]
@@ -175,15 +177,15 @@ class Sim:
         for slot, spec in enumerate(specs):
             p = spawns[order[slot]]
             z = self.world.ground_at(*p)
-            tier_spread = {"easy": 2.5, "medium": 1.5, "hard": 0.8, "expert": 0.35}.get(spec.get("tier"), 0.0)
+            tier_spread = 0.0 if "factory" in spec else {"easy": 2.5, "medium": 1.5, "hard": 0.8, "expert": 0.35}.get(spec.get("tier"), 0.0)
             m = Mech(slot, [p[0], p[1], z], cfg, None, spec["label"], tier_spread)
             m.house = spec.get("house", False)
             m.tier = spec.get("tier")
             h = deepcopy(hello)
             h["slot"] = slot
             h["seed"] = self.rng.randrange(1 << 31)
-            m.ctrl = spec["cls"](h)
             self.mechs.append(m)
+            m.ctrl = spec["factory"](h, self) if "factory" in spec else spec["cls"](h)
         # loot
         self.pickups = []
         weights = cfg["loot"]["weights"]
@@ -483,35 +485,28 @@ class Sim:
 
     # ------------------------------------------------------------ decisions
     def decide(self):
-        house_seen = {}
         player = [m for m in self.mechs if m.alive and not m.house]
-        if self.mode == "practice":
-            for h in self.mechs:
-                if h.alive and h.house:
-                    for p in player:
-                        if self.visible(h, p.pos, 9):
-                            house_seen[p.id] = self.t
         n_hunters = 1 + self.player_kills
         if self.t > 300:
             n_hunters = 99
         tier_order = {"easy": 0, "medium": 1, "hard": 2, "expert": 3}
         house_alive = sorted([m for m in self.mechs if m.alive and m.house], key=lambda m: (tier_order.get(m.tier, 0), m.id))
-        hunters = set(m.id for m in house_alive[:n_hunters])
+        self.hunters = set(m.id for m in house_alive[:n_hunters])
+        self.prey_info = None
+        if player:
+            p = player[0]
+            if any(h.alive and h.house and self.visible(h, p.pos, 9 * p.scale()) for h in self.mechs):
+                self.prey_seen_t = self.t
+        if player and self.t - getattr(self, "prey_seen_t", -99) < 5.0:
+            p = player[0]
+            self.prey_info = {"id": p.id, "kind": "mech", "pos": list(p.pos), "vel": list(p.vel), "aim": list(p.aim),
+                              "hp": p.hp, "max_hp": p.max_hp, "cubes": p.cubes, "weapons": p.kinds(), "charging": p.charging}
         for m in self.mechs:
             if not m.alive:
                 continue
             obs = self.obs_for(m)
             if self.mode == "practice" and m.house:
-                # squad: never target each other; hunters get the shared sighting of the player
                 obs["mechs"] = [x for x in obs["mechs"] if x["kind"] == "npc" or not self.mechs[x["id"]].house]
-                for p in player:
-                    known = any(x["id"] == p.id for x in obs["mechs"])
-                    shared = self.t - house_seen.get(p.id, -99) < 5 or m.id in hunters
-                    if not known and shared and m.id in hunters:
-                        obs["mechs"].append({"id": p.id, "kind": "mech", "pos": list(p.pos), "vel": list(p.vel), "aim": list(p.aim),
-                                             "hp": p.hp, "max_hp": p.max_hp, "cubes": p.cubes, "weapons": p.kinds(), "charging": p.charging})
-                    if known and m.id not in hunters and math.hypot(p.pos[0] - m.pos[0], p.pos[1] - m.pos[1]) > 70 and self.t - m.last_combat > 3:
-                        obs["mechs"] = [x for x in obs["mechs"] if x["id"] != p.id]
             t0 = time.perf_counter()
             try:
                 act = m.ctrl.act(obs) or {}
@@ -1038,11 +1033,15 @@ def run_one(args):
         random.Random(seed).shuffle(specs)
     else:
         path, label, _ = bot_specs[0]
-        house_path = bot_specs[1][0] if len(bot_specs) > 1 else path
         pc = load_bot_class(path, 0)
-        hc = load_bot_class(house_path, 1) if house_path != path else pc
         tiers = ["easy"] * 4 + ["medium"] * 4 + ["hard"] * 4 + ["expert"] * 3
-        specs = [{"cls": pc, "label": label}] + [{"cls": hc, "label": "house-" + t, "house": True, "tier": t} for t in tiers]
+        if len(bot_specs) > 1:
+            hc = load_bot_class(bot_specs[1][0], 1)
+            specs = [{"cls": pc, "label": label}] + [{"cls": hc, "label": "house-" + t, "house": True, "tier": t} for t in tiers]
+        else:
+            import house
+            specs = [{"cls": pc, "label": label}] + [{"factory": (lambda h, sim, t=t: house.HouseBot(h, t, sim)), "label": "house-" + t,
+                                                      "house": True, "tier": t} for t in tiers]
     sim = Sim(hello, specs, seed, mode)
     t0 = time.time()
     res, t_end = sim.run()

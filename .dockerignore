@@ -3,4 +3,5 @@ cache
 check
 tools
 *.md
+!README.md
 __pycache__
