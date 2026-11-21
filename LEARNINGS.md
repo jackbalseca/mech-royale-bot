@@ -59,6 +59,8 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v39 `fba06b4` | v36 + stay when already hidden + keep hiding after losing (port audit, coverMove) | 5.21 | -0.06 vs v36 | no effect |
 | v40 `5444c5d` | v36 + zone hold: use the live circle during shrinks instead of shrinking it twice (port audit 7) | 5.13 | -0.14 vs v36 | reject. Behaviour changed (server sends the live circle), but our old, more cautious zone estimate scored better |
 | **v41 `50579e7`** | **v36 + cautious engage rules for the first 20 s (Go's default profile)** | **5.31** | +0.04 vs v36 | noise; **baseline** by the highest-score rule |
+| v42b `082238c` | v41 + zone look-ahead 16 s | 5.27 | -0.04 vs v41 | no effect |
+| v44 `1f6f322` | v41 + mortar lobs over cover at recently seen hostiles (own idea) | 5.25 | -0.06 vs v41 | no effect |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -89,7 +91,8 @@ where we are, so standing still does not keep us hidden. Keep-gun barely fires (
 as neutral. The sim predicted the dodge would hurt (more die-first, earlier deaths); it was wrong again.
 So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
 **v28 (Sat 1:40 PM): porting a top team's *combat core* (+0.59) beat porting its tuning tweaks (v27r, -0.08).**
-**v31 (Sat 4:55 PM): but porting its economy (farming walks) lost -0.36. Our bot gains from fighting well, not from roaming.** The top-10 bots
+**v31 (Sat 4:55 PM): but porting its economy (farming walks) lost -0.36. Our bot gains from fighting well, not from roaming.**
+**New organizer rule (Sat 6:23 PM): excessive reuse of other teams' code (entries included) may disqualify. From v44 on we build our own implementations of ideas only; no more ported code.** The top-10 bots
 mostly run giddygiddyboy's MIT Go bot (6.19); another team's Python port of its core scored ~5.0-5.2, matching our 5.13.
 
 **Bullet dodge (v24b, +0.29 vs v19) was the strongest single lever before v28.** Extending it to laser charges (v25 laser dodge) added nothing.
