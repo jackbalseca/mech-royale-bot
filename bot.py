@@ -28,6 +28,7 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
+V26_DROPS = True
 
 
 def wrap(a):
@@ -578,6 +579,17 @@ class Bot:
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
             return "cube", wp, mv, False, False
+        # v26-drops: active supply-drop capture (+3 cubes, full HP and energy). Checked before NPC/crate shooting so a drone in
+        #     view doesn't block it; a mech target is handled earlier (combat), so we still fight if one shows up.
+        if V26_DROPS:
+            for dr in obs.get("drops", []):
+                dd = hdist(p2, dr["pos"])
+                if (dr["lands_in"] < 25 and dd < 300 and (hp_frac < 0.8 or dd < 120)
+                        and hdist(dr["pos"], c_next) < r_next - 10 and hdist(dr["pos"], c_soon) < r_soon - 10):
+                    if dd < dr["radius"] - 2:
+                        return "capture", None, (0.0, 0.0), False, False
+                    mv, wp = self.nav_move(p2, dr["pos"], onroof)
+                    return "drop", wp, mv, dd > 60, False
         # 4. shooting an NPC or crate: hold still-ish and keep some distance from NPCs
         if side is not None:
             m, c, d, _ = side
@@ -587,7 +599,7 @@ class Bot:
                 return "npc", None, self.strafed((0.0, 0.0), side, t, 0.6), False, False
             return "crate", None, (0.0, 0.0), False, False
         # 5. supply drop
-        for dr in ([] if self.heal else obs.get("drops", [])):  # v24-heal: no supply-drop walks while healing
+        for dr in ([] if self.heal or V26_DROPS else obs.get("drops", [])):  # v24-heal: no drop walks while healing; v26-drops replaces this
             if dr["lands_in"] < 15 and hp_frac > 0.4 and hdist(dr["pos"], c_soon) < r_soon - 10:
                 dd = hdist(p2, dr["pos"])
                 if dd < 220:
