@@ -610,6 +610,8 @@ class Bot:
         return best
 
     def loadout_gain(self, kinds, k):
+        if k == "mortar":  # v20: never carry a mortar (a laser does +60% "cook-off" damage to its holder; laser beats mortar)
+            return 0.0
         if None in kinds:
             return WEAPON_RANK.get(k, 0)
         worst = min(WEAPON_RANK.get(x, 0) for x in kinds)
