@@ -70,6 +70,7 @@ class Bot:
         self.noise = []  # (t, bearing, dist, kind)
         self.my_kills = 0
         self.ffa_score = 0.0
+        self.ffa_first_t = None
         self.prev_alive = None
         self.scan_phase = self.rng.random() * TAU
         self.bad_pickups = {}
@@ -178,7 +179,12 @@ class Bot:
                 self.hostile[e["by"]] = t
             elif e["type"] == "hit" and e.get("target") is not None and e["target"] < 100:
                 self.hostile[e["target"]] = t  # we started it: they'll come for us
-        ffa = self.ffa_score >= 1
+        # Free-for-all evidence: in a real FFA someone else dies early (live rooms: within ~20 s). In practice the squad
+        # never fights itself, so a lone unexplained death later on (friendly fire, an NPC, the zone) must not switch
+        # off the passive-squad rule for the rest of the match.
+        if self.ffa_score >= 1 and self.ffa_first_t is None:
+            self.ffa_first_t = t
+        ffa = (self.ffa_first_t is not None and self.ffa_first_t < 90.0) or self.ffa_score >= 3
 
         # ---- zone
         z = obs["zone"]
@@ -216,9 +222,7 @@ class Bot:
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60 if vis else 20
-                if t - self.last_dmg[0] < 1.0 and vis:
-                    score -= 120  # it's shooting us right now: face it
+                score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
@@ -444,12 +448,10 @@ class Bot:
                        and self.t_seen(e, t)]
             n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
             # recovering: break line of sight, regen, then come back
-            if (hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7)) and obs["alive"] > 2:
+            if hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7):
                 self.recovering = True
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if obs["alive"] <= 2:
-                self.recovering = False  # last opponent: retreating only gives them free shots
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
