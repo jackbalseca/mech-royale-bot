@@ -31,6 +31,7 @@ Last updated: Sat Nov 21, 12:55 AM ET.
 | v15 `08fe076` | quiet: no optional gunfire | 3.85 | -0.07 vs v10 | no effect: **sound is not the cost** |
 | **v16 `3881e26`** | **stay put when idle (no drift to the zone hold point)** | **4.02** | +0.10 vs v10 | **keep: current best** (edge of noise, consistent with the exposure pattern) |
 | v17a `dd5fc9c` | shorter weapon-pickup search (60/40 m instead of 160/90 m) | 3.75 | -0.27 vs v16 | reject: **weapons are worth the walk** |
+| v18 `6f03444` | upgrade order: plating, nanites, then armor | 3.92 | -0.10 vs v16 | no effect: upgrade order barely matters |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
