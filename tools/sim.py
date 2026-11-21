@@ -60,6 +60,7 @@ def load_bot_class(path, tag):
     spec = importlib.util.spec_from_file_location(f"botmod_{tag}", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    mod.__file__ = os.path.join(ROOT, "bot.py")  # so cache/ paths resolve to the repo root
     w, nav = shared_world()
     mod.World = lambda *a, **k: w
 

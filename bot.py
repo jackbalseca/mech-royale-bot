@@ -74,6 +74,9 @@ class Bot:
         self.scan_phase = self.rng.random() * TAU
         self.bad_pickups = {}
         self.prev_move = (0.0, 0.0)
+        self.recovering = False
+        self.cover = None
+        self.cover_t = -99.0
         # warm up lazy imports / caches so the first real decision isn't slow
         try:
             self.nav.steer((0.0, 0.0), (100.0, 50.0))
@@ -419,8 +422,21 @@ class Bot:
             m, c, d, vis = target
             enemy_hp = m.get("hp", 1400)
             to = unit((c[0] - p2[0], c[1] - p2[1]))
-            n_close = sum(1 for e in obs["mechs"] if e["kind"] == "mech" and hdist(p2, e["pos"]) < 120)
-            if hp_frac < 0.3 and (enemy_hp > me["hp"] or n_close > 1):
+            threats = [e for e in obs["mechs"] if e["kind"] == "mech" and hdist(p2, e["pos"]) < 200
+                       and self.t_seen(e, t)]
+            n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
+            # recovering: break line of sight, regen, then come back
+            if hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7):
+                self.recovering = True
+            if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
+                self.recovering = False
+            if self.recovering and not zone_danger:
+                cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
+                if cov is not None:
+                    if hdist(p2, cov) < 2.5:
+                        return "cover", cov, (0.0, 0.0), False, False
+                    mv, wp = self.nav_move(p2, cov, onroof)
+                    return "to-cover", wp, mv, hdist(p2, cov) > 6, False
                 away = (p2[0] - to[0] * 60, p2[1] - to[1] * 60)
                 if hdist(away, c_soon) > r_soon * 0.85:  # don't flee into the storm
                     u = unit((away[0] - c_soon[0], away[1] - c_soon[1]))
@@ -435,6 +451,8 @@ class Bot:
             else:
                 want = 60.0
             if not vis:
+                if self.recovering:
+                    return "lurk", None, (0.0, 0.0), False, False
                 mv, wp = self.nav_move(p2, (c[0], c[1]), onroof)
                 return "hunt", wp, mv, False, False
             if d > want + 15:
@@ -443,6 +461,7 @@ class Bot:
             if d < want - 15:
                 return "space", None, self.strafed((-to[0], -to[1]), target, t, 0.6), False, False
             return "strafe", None, self.strafed((0.0, 0.0), target, t, 1.0), False, False
+        self.recovering = self.recovering and hp_frac < 0.85
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:
@@ -476,6 +495,38 @@ class Bot:
             return "hold", wp, (mv[0] * 0.8, mv[1] * 0.8), False, False
         return "idle", None, (0.0, 0.0), False, False
 
+    def t_seen(self, e, t):
+        v = self.enemy_seen.get(e["id"])
+        return v is not None and t - v[0] < 1.0
+
+    def find_cover(self, p2, threats, t, c_soon, r_soon):
+        """Nearest walkable spot (<= 34 m) that no threat can see; cached for 1 s."""
+        if self.cover is not None and t - self.cover_t < 1.0:
+            return self.cover
+        eyes = [(e["pos"][0], e["pos"][1], e["pos"][2] + 8.0) for e in threats[:4]]
+        best = None
+        for r in (7.0, 12.0, 18.0, 25.0, 34.0):
+            for k in range(16):
+                a = k * TAU / 16 + (r * 0.37)
+                q = (p2[0] + math.cos(a) * r, p2[1] + math.sin(a) * r)
+                if not self.world.in_bounds(*q) or not self.world.walkable(*q):
+                    continue
+                if hdist(q, c_soon) > r_soon - 5:
+                    continue
+                gz = self.world.ground_at(*q)
+                if any(self.world.los(ey, (q[0], q[1], gz + 4.5)) or self.world.los(ey, (q[0], q[1], gz + 8.5)) for ey in eyes):
+                    continue
+                if not self.world.walk_clear(p2, q):
+                    continue
+                score = r + min(hdist(q, (e[0], e[1])) for e in eyes) * -0.15
+                if best is None or score < best[0]:
+                    best = (score, q)
+            if best is not None:
+                break
+        self.cover = best[1] if best else None
+        self.cover_t = t
+        return self.cover
+
     def strafed(self, mv, target, t, k):
         m, c = target[0], target[1]
         p = self.last_pos
@@ -506,7 +557,7 @@ class Bot:
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
             d = hdist(p2, pk["pos"])
-            if d > 90 or hdist(pk["pos"], c_soon) > r_soon - 8:
+            if d > (160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
                 continue
             gain = self.loadout_gain(kinds, k)
             if gain <= 0:
