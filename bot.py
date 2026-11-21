@@ -25,6 +25,9 @@ UPGRADE_PRIORITY = [
     "servos", "sensors", "mortar_reload", "mortar_splash", "mortar_velocity", "jets", "gun_velocity", "laser_pierce",
 ]
 WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
+V24_HEAL = True
+V24_KEEP_GUN = True
+V24_DODGE = True
 
 
 def wrap(a):
@@ -79,6 +82,8 @@ class Bot:
         self.hostile = {}  # mech id -> last time it shot at / aimed at us
         self.cover = None
         self.cover_t = -99.0
+        self.heal = False  # v24-heal: hurt with no mech target -> don't deal damage, don't roam, regen
+        self.npc_dmg = {}  # v24-heal: npc id -> last time it damaged us
         # warm up lazy imports / caches so the first real decision isn't slow
         try:
             self.nav.steer((0.0, 0.0), (100.0, 50.0))
@@ -190,6 +195,8 @@ class Bot:
         for e in obs.get("events", []):
             if e["type"] == "damaged" and e.get("by") is not None and e["by"] < 100:
                 self.hostile[e["by"]] = t
+            elif e["type"] == "damaged" and e.get("by") is not None:
+                self.npc_dmg[e["by"]] = t  # v24-heal: NPCs (ids >= 100) that are shooting us
             elif e["type"] == "hit" and e.get("target") is not None and e["target"] < 100:
                 self.hostile[e["target"]] = t  # we started it: they'll come for us
         ffa = self.ffa_score >= 1
@@ -234,18 +241,22 @@ class Bot:
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
+        # v24-heal: dealing damage resets the 5 s regen timer, so while hurt with no mech to fight, stop farming
+        self.heal = V24_HEAL and target is None and hp_frac < 0.90 and obs["alive"] > 2 and not zone_danger
 
         # secondary targets: NPCs then crates (only when no mech is around)
         side = None
         recent_enemy = any(t - v[0] < 4.0 and hdist(p2, v[1]) < 160 for v in self.enemy_seen.values())
         if target is None:
             for n in sorted(npcs, key=lambda n: hdist(p2, n["pos"])):
+                if self.heal and t - self.npc_dmg.get(n["id"], -99) >= 2.0:
+                    continue  # v24-heal: only shoot back at an NPC that hit us in the last 2 s
                 c = self.center_of(n)
                 d = math.dist(muzzle, c)
                 if d < 140 and self.world.los(muzzle, c):
                     side = (n, c, d, True)
                     break
-            if side is None and not recent_enemy:
+            if side is None and not recent_enemy and not self.heal:  # v24-heal: no crates while healing
                 for cr in sorted(obs.get("crates", []), key=lambda c: hdist(p2, c["pos"])):
                     c = [cr["pos"][0], cr["pos"][1], cr["pos"][2] + 1.2]
                     d = math.dist(muzzle, c)
@@ -354,6 +365,22 @@ class Bot:
                     move = (away[0] + move[0] * 0.3, away[1] + move[1] * 0.3)
                     boost = True
                     mode = "dodge"
+        # v24-dodge (from exp-agent-ttun 33862a2): sidestep incoming bullets. House bots lead our *current* velocity, so a
+        # sharp perpendicular change while a bullet is in flight makes it miss (mid/long range mostly).
+        # Adapted from the Wolverines/TTUN bot (MIT License; see CREDITS.md).
+        if V24_DODGE and mode not in ("dodge", "unstick") and me["in_zone"]:
+            try:
+                bd = self.bullet_dodge(obs, me, p2)
+            except Exception:
+                bd = None
+            if bd is not None:
+                move = (move[0] * 0.3 + bd[0] * 0.95, move[1] * 0.3 + bd[1] * 0.95)
+                n = math.hypot(*move)
+                if n > 1:
+                    move = (move[0] / n, move[1] / n)
+                if me["energy"] > (55 if ki is not None and target is not None else 25):
+                    boost = True
+                mode += "+bdodge"
         # take a pickup if within reach
         take = self.want_take(obs, me, p2)
         if take:
@@ -397,6 +424,41 @@ class Bot:
         if tt < 0 or tt > 8:
             return None
         return (p[0] + v[0] * tt, p[1] + v[1] * tt)
+
+    def bullet_dodge(self, obs, me, p2):
+        """v24-dodge: unit sidestep direction away from bullets that will pass within reach in <0.9 s, or None.
+        Perpendicular to each bullet's path, away from its closest point of approach (TTUN, MIT)."""
+        pos = me["pos"]
+        scale = 1 + self.cfg["cubes"]["size_per_cube"] * me.get("cubes", 0)
+        cz = pos[2] + 4.5 * scale
+        reach = 3.6 * scale
+        dx = dy = 0.0
+        for pr in obs.get("projectiles", []):
+            if pr["kind"] == "mortar":
+                continue
+            px, py, pz = pr["pos"]
+            vx, vy, vz = pr["vel"]
+            vv = vx * vx + vy * vy + vz * vz
+            if vv < 1:
+                continue
+            tc = ((pos[0] - px) * vx + (pos[1] - py) * vy + (cz - pz) * vz) / vv
+            if tc < 0 or tc > 0.9:
+                continue
+            mx, my, mz = px + vx * tc - pos[0], py + vy * tc - pos[1], pz + vz * tc - cz
+            if math.sqrt(mx * mx + my * my + (mz * 0.5) ** 2) > reach:
+                continue
+            hv = math.hypot(vx, vy) or 1.0
+            nx, ny = -vy / hv, vx / hv
+            if nx * -mx + ny * -my < 0:
+                nx, ny = -nx, -ny
+            dx += nx
+            dy += ny
+        if dx == 0.0 and dy == 0.0:
+            return None
+        u = unit((dx, dy))
+        if u == (0.0, 0.0) or not self.world.walkable(p2[0] + u[0] * 4, p2[1] + u[1] * 4):
+            return None  # don't sidestep into a wall
+        return u
 
     def look_dir(self, me, t, p2, target):
         # someone shot us recently: face them (rear hits do x1.5)
@@ -507,7 +569,7 @@ class Bot:
             mv, wp = self.nav_move(p2, pk["pos"], onroof)
             return "loot", wp, mv, False, False
         cubes = [c for c in obs.get("cubes", []) if hdist(p2, c["pos"]) < 70 and hdist(c["pos"], c_soon) < r_soon - 10]
-        if cubes:
+        if cubes and not self.heal:  # v24-heal: no cube walks while healing
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
             return "cube", wp, mv, False, False
@@ -520,7 +582,7 @@ class Bot:
                 return "npc", None, self.strafed((0.0, 0.0), side, t, 0.6), False, False
             return "crate", None, (0.0, 0.0), False, False
         # 5. supply drop
-        for dr in obs.get("drops", []):
+        for dr in ([] if self.heal else obs.get("drops", [])):  # v24-heal: no supply-drop walks while healing
             if dr["lands_in"] < 15 and hp_frac > 0.4 and hdist(dr["pos"], c_soon) < r_soon - 10:
                 dd = hdist(p2, dr["pos"])
                 if dd < 220:
@@ -531,6 +593,14 @@ class Bot:
         # 6. v16: stay put when idle. Walking across the map toward a hold point exposes us to the squad, which
         #    shares every sighting (LEARNINGS.md: movement/visibility, not sound, is what costs points).
         #    Zone pressure is handled first in choose_move (it looks 10 s ahead), so we only move when we must.
+        if self.heal:
+            # v24-heal: regen out of sight of any mech seen in the last 5 s; with none, stand still (v16)
+            seen = [{"pos": v[1]} for v in self.enemy_seen.values() if t - v[0] < 5.0]
+            cov = self.find_cover(p2, seen, t, c_soon, r_soon) if seen else None
+            if cov is not None and hdist(p2, cov) >= 2.5:
+                mv, wp = self.nav_move(p2, cov, onroof)
+                return "heal-to-cover", wp, mv, False, False
+            return ("heal-cover" if cov is not None else "heal"), None, (0.0, 0.0), False, False
         return "idle", None, (0.0, 0.0), False, False
 
     def t_seen(self, e, t):
@@ -589,6 +659,8 @@ class Bot:
 
     def best_pickup(self, obs, me, p2, c_soon, r_soon):
         kinds = self.slots(me)
+        if self.heal and None not in kinds:
+            return None  # v24-heal: fetch a weapon only into an empty slot while healing (no swaps)
         best, bestv = None, 0.0
         cands = list(obs.get("pickups", []))
         if None in kinds:  # v19: with an empty slot, also go to weapons we saw earlier
@@ -612,6 +684,12 @@ class Bot:
     def loadout_gain(self, kinds, k):
         if None in kinds:
             return WEAPON_RANK.get(k, 0)
+        # v24-keep-gun (from exp-agent-weapons 16c2fa3): never trade the gun away. Lightning reaches only 45 m and the
+        # laser fires once per 2.4 s, so laser+lightning has ~126 dmg/s at 60-120 m vs ~190-210 for gun+laser.
+        # A swap is worth it only if the new weapon beats the non-gun weapon it would replace.
+        others = [x for x in kinds if x != "gun"]
+        if V24_KEEP_GUN and others and WEAPON_RANK.get(k, 0) <= min(WEAPON_RANK.get(x, 0) for x in others):
+            return 0.0
         worst = min(WEAPON_RANK.get(x, 0) for x in kinds)
         return WEAPON_RANK.get(k, 0) - worst
 
@@ -626,9 +704,11 @@ class Bot:
                 continue
             if None in kinds:
                 return pk["id"], None
-            # swap out the worst weapon (never a charging laser)
+            if self.heal:
+                return None  # v24-heal: no swaps while healing
+            # swap out the worst weapon (never a charging laser; v24-keep-gun: never the gun)
             cand = [(WEAPON_RANK.get(w["kind"], 0), i) for i, w in enumerate(me["weapons"])
-                    if w and not (w["kind"] == "laser" and w.get("charge", 0) > 0)]
+                    if w and not (V24_KEEP_GUN and w["kind"] == "gun") and not (w["kind"] == "laser" and w.get("charge", 0) > 0)]
             if not cand:
                 return None
             return pk["id"], min(cand)[1]
