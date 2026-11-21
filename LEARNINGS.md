@@ -49,6 +49,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v29 `fb664bb` | v28 + laser only at mechs + drone/crate fire gating with return fire + eager reload | 4.94 | -0.19 vs v28 | reject; singles v29a/b/c pending |
 | v29a `bb09304` | v28 + laser charged only at mechs | 5.06 | -0.07 vs v28 | no effect; v29's loss is in drone/crate gating or eager reload (likely drone gating: drones are our cube source) |
 | v31 `a9448ac` | v28 + farming between fights (cubes 105 m, crates/drones 150 m at >50% HP; giddygiddyboy chooseLoot) | 4.77 | -0.36 vs v28 | reject: **walking to farm costs us points even with the new combat core** (sim: kills up, survival 133 -> 111 s) |
+| v30 `db7b7a8` | v28 + fast unstick + grid cover search around corners (giddygiddyboy) | 4.98 | -0.15 vs v28 | reject: no gain (sim: cover search found a spot in 1% of retreats) |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
