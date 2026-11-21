@@ -52,6 +52,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v30 `db7b7a8` | v28 + fast unstick + grid cover search around corners (giddygiddyboy) | 4.98 | -0.15 vs v28 | reject: no gain (sim: cover search found a spot in 1% of retreats) |
 | v32 `e3a0da9` | v28 + opening recovery: withdraw 5.5 s if losing the trade in the first 60 s (Kanyaraasi) | 5.13 | 0.00 vs v28 | **repeated score**: identical to v28, so the trigger never fired in the 48 official matches (early fights start near full HP). No effect |
 | **v34 `927da08`** | **v28 + upgrade orders: plating, armor, laser_damage, laser_charge, nanites... (practice)** | **5.15** | +0.02 vs v28 | noise; **baseline** by the highest-score rule |
+| v35b `a49150e` | v34 + never take a mortar (giddygiddyboy NoMortar) | 4.79 | -0.36 vs v34 | reject: **keep the mortar** (third loss for no-mortar, even with the v28 core) |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
