@@ -30,7 +30,7 @@ V24_KEEP_GUN = True
 V24_DODGE = True
 V25_LASERDODGE = True
 V25_LASERSEEK = True
-V25_NOMORTAR = True
+V25_NOMORTAR = False
 
 
 def wrap(a):
