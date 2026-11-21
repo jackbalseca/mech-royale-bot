@@ -30,9 +30,15 @@ V24_KEEP_GUN = True
 V24_DODGE = True
 V26_DODGEHOLD = True
 # v27: ported from giddygiddyboy's practice mode (MIT License; see CREDITS.md)
-V27_FOCUS = True   # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
-V27_FINISH = True  # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
+V27_FOCUS = False  # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
+V27_FINISH = False # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
 V27_LETHAL = True  # release a partial laser charge early when it already kills (dmg * 0.7 >= target HP)
+# v28: giddygiddyboy's practice combat core, rewritten in Python (MIT License; see CREDITS.md)
+V28_ENGAGE = True   # practice engage rules + sticky weak-target scoring; only visible targets, never chase hidden ones
+V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still (range, LOS, exposure to others, zone)
+V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
+V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
+LAT = 0.075
 
 
 def wrap(a):
@@ -68,6 +74,10 @@ class Bot:
         # state
         self.target_id = None
         self.stick = (None, -99.0)  # v27: (target id, time chosen)
+        self.hit_me = {}  # v28: mech id -> last time it damaged us
+        self.lose_t = -99.0  # v28: last tick we were losing a fight
+        self.fstrafe = 1.0
+        self.fstrafe_until = 0.0
         self.strafe = 1.0
         self.strafe_until = 0.0
         self.last_pos = None
@@ -138,6 +148,11 @@ class Bot:
         ay, ap = me["aim"]
         ey = abs(wrap(ay - want_yaw))
         ep = abs(ap - want_pitch)
+        if V28_AIM:  # on target within the next 50 ms of turning (giddygiddyboy "slew")
+            st = me.get("stats", {})
+            ey = max(0.0, ey - st.get("turn_rate", 4.0) * 0.05)
+            ep = max(0.0, ep - st.get("pitch_rate", 3.0) * 0.05)
+            return ey < math.atan2(radius * 0.75, max(dist, 1.0)) and ep < math.atan2(height * 0.4, max(dist, 1.0))
         tol_y = math.atan2(radius * 0.75, max(dist, 1.0)) + 0.004
         tol_p = math.atan2(height * 0.35, max(dist, 1.0)) + 0.004
         return ey <= tol_y and ep <= tol_p
@@ -202,6 +217,7 @@ class Bot:
         for e in obs.get("events", []):
             if e["type"] == "damaged" and e.get("by") is not None and e["by"] < 100:
                 self.hostile[e["by"]] = t
+                self.hit_me[e["by"]] = t
             elif e["type"] == "damaged" and e.get("by") is not None:
                 self.npc_dmg[e["by"]] = t  # v24-heal: NPCs (ids >= 100) that are shooting us
             elif e["type"] == "damaged" and e.get("weapon") == "npc":
@@ -244,10 +260,35 @@ class Bot:
             d = math.dist(muzzle, c)
             hostile = t - self.hostile.get(m["id"], -99) < 12.0
             weak = m.get("hp", 1400) < 0.35 * m.get("max_hp", 1400)
-            if not ffa and not hostile and not d < 25:
+            v28 = V28_ENGAGE and not ffa
+            if v28:  # v28: giddygiddyboy's practice engage rules (MIT)
+                d2 = hdist(p2, m["pos"])
+                to_me = math.atan2(pos[1] - m["pos"][1], pos[0] - m["pos"][0])
+                aimed = abs(wrap(m["aim"][0] - to_me)) < 0.22
+                vm = m.get("vel") or [0, 0, 0]
+                closing = (vm[0] * (pos[0] - m["pos"][0]) + vm[1] * (pos[1] - m["pos"][1])) / max(d2, 1e-6)
+                hp_m, mx_m = m.get("hp", 1400), m.get("max_hp", 1400)
+                late = obs["zone"]["next_radius"] <= 70 or obs["alive"] <= 3
+                engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 6 or late or (closing > 3 and d2 < 180)
+                          or (hp_m < 0.4 * mx_m and d2 < 160) or (aimed and d2 < 190))
+                if not engage or d2 > 240:
+                    continue
+            elif not ffa and not hostile and not d < 25:
                 continue  # leave passive mechs alone: shooting them only brings more enemies
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
-            if V27_FOCUS:
+            if v28:
+                if not vis:
+                    continue  # never chase a hidden target in practice
+                score = d2 + 0.18 * hp_m
+                if hp_m <= 0.3 * mx_m:
+                    score -= 200  # giddygiddyboy e19e3c8 (the 6.19 build) kept 200
+                if m["id"] == self.stick[0] and t - self.stick[1] < 2.0:
+                    score -= 200
+                if t - self.hit_me.get(m["id"], -99) < 4:
+                    score -= 40
+                if closing > 3:
+                    score -= 15
+            elif V27_FOCUS:
                 hp_m = m.get("hp", 1400)
                 score = d + 0.18 * hp_m + (0 if vis else 150)
                 if hp_m <= 0.3 * m.get("max_hp", 1400):
@@ -316,6 +357,25 @@ class Bot:
                     tt = math.dist(muzzle, q) / s
                 lead_yaw = yaw_to(muzzle, q)
                 lead_pitch = math.atan2(q[2] - muzzle[2], max(hdist(muzzle, q), 0.1))
+            if V28_AIM:  # v28: 75 ms latency, our own motion during it, gun lead from 3 m out (giddygiddyboy, MIT)
+                vv = m.get("vel") or [0, 0, 0]
+                sv = me.get("vel") or [0, 0, 0]
+                mz = [muzzle[0] + sv[0] * LAT, muzzle[1] + sv[1] * LAT, muzzle[2]]
+                dp = [c[0] + vv[0] * (LAT + 0.05), c[1] + vv[1] * (LAT + 0.05), c[2]]
+                direct_yaw = yaw_to(mz, dp)
+                direct_pitch = math.atan2(dp[2] - mz[2], max(hdist(mz, dp), 0.1))
+                lead_yaw, lead_pitch = direct_yaw, direct_pitch
+                if gun:
+                    spd = gun["stats"].get("speed") or 252.0
+                    grounded = abs(vv[2]) < 0.5
+                    tt = 0.0
+                    q = list(c)
+                    for _ in range(4):
+                        t2 = LAT + tt
+                        q = [c[0] + vv[0] * t2, c[1] + vv[1] * t2, c[2] + (0.0 if grounded else vv[2] * t2 * 0.5)]
+                        tt = max(0.0, math.dist(mz, q) - 3.0) / spd
+                    lead_yaw = yaw_to(mz, q)
+                    lead_pitch = math.atan2(q[2] - mz[2], max(hdist(mz, q), 0.1))
             laser_ready = laser is not None and (laser.get("cooldown", 0) < 0.4 or laser.get("charge", 0) > 0) and d < laser["stats"]["range"]
             light_in = light is not None and d < light["stats"]["range"] * 0.95 and me["energy"] > 6
             if light_in or laser_ready:
@@ -570,6 +630,9 @@ class Bot:
                                         or (threats3 >= 2 and hp_frac < 0.55) or (threats3 >= 3 and hp_frac < 0.8))
             if losing:
                 self.recovering = True
+                self.lose_t = t
+            if V28_RETREAT and not losing and t - self.lose_t >= 1.5:
+                self.recovering = False  # v28: retreat only while losing + 1.5 s (giddygiddyboy LoseRule, MIT)
             if finishing:
                 self.recovering = False
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
@@ -587,6 +650,15 @@ class Bot:
                     away = (c_soon[0] + u[0] * r_soon * 0.8, c_soon[1] + u[1] * r_soon * 0.8)
                 mv, wp = self.nav_move(p2, away, onroof)
                 return "retreat", wp, self.strafed(mv, target, t, 0.4), True, False
+            if V28_FIGHT and self.ffa_score < 1 and vis and not onroof:
+                mvf, boostf = self.fight_move(obs, me, p2, m, c, d, enemy_frac, hp_frac, threats3, t, c_next, r_next)
+                rr = 70.0 if hp_frac > 0.5 else 40.0  # FightLoot 70 (x0.57 when hurt), part of the 6.19 build
+                near = [cb for cb in obs.get("cubes", []) if hdist(p2, cb["pos"]) < rr and abs(cb["pos"][2] - me["pos"][2]) < 4]
+                if near:
+                    cb = min(near, key=lambda q: hdist(p2, q["pos"]))
+                    mv, wp = self.nav_move(p2, cb["pos"], onroof)
+                    return "fight-cube", wp, mv, boostf, False
+                return "fight", None, mvf, boostf, False
             kinds = self.slots(me)
             if "lightning" in kinds and me["energy"] > 25:
                 want = 28.0
@@ -608,6 +680,8 @@ class Bot:
                 return "space", None, self.strafed((-to[0], -to[1]), target, t, 0.6), False, False
             return "strafe", None, self.strafed((0.0, 0.0), target, t, 1.0), False, False
         self.recovering = self.recovering and hp_frac < 0.85
+        if V28_RETREAT and t - self.lose_t >= 1.5:
+            self.recovering = False
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:
@@ -647,6 +721,90 @@ class Bot:
                 return "heal-to-cover", wp, mv, False, False
             return ("heal-cover" if cov is not None else "heal"), None, (0.0, 0.0), False, False
         return "idle", None, (0.0, 0.0), False, False
+
+    def fight_move(self, obs, me, p2, m, c, d, enemy_frac, hp_frac, crowd, t, c_next, r_next):
+        """v28: giddygiddyboy's fightMove (MIT; see CREDITS.md), rewritten: score standing still and 16 spots at 6 m
+        by distance to our preferred range, line of sight to the target (wanted only when we can shoot), exposure to
+        other mechs, the zone, a nearby cube and a strafe bias. Returns (move vector, boost)."""
+        ws = [w for w in me["weapons"] if w]
+        gun = next((w for w in ws if w["kind"] == "gun"), None)
+        laser = next((w for w in ws if w["kind"] == "laser"), None)
+        light = next((w for w in ws if w["kind"] == "lightning"), None)
+        if light is not None and me["energy"] > 12:
+            rp = 28.0
+        elif laser is not None:
+            rp = 120.0
+        else:
+            rp = 85.0
+        if enemy_frac < 0.38 and hp_frac > 0.42 and crowd <= 2:
+            rp = 20.0  # finish a weak target
+        if light is None:  # never close inside a lightning arc or a mortar's minimum range
+            tw = m.get("weapons") or []
+            if "lightning" in tw:
+                rp = max(rp, 64.0)
+            if "mortar" in tw:
+                rp = max(rp, 80.0)
+        ready = (laser is not None or light is not None or
+                 (gun is not None and gun.get("ammo", 0) > 0 and gun.get("reload", 0) <= 0.25 and d <= gun["stats"]["range"] - 10))
+        want_los = 1.0 if ready else -1.0
+        if t >= self.fstrafe_until:
+            if self.rng.random() < 0.6:
+                self.fstrafe = -self.fstrafe
+            self.fstrafe_until = t + 0.3 + self.rng.random() * 0.7
+        to = unit((m["pos"][0] - p2[0], m["pos"][1] - p2[1]))
+        sx, sy = -to[1] * self.fstrafe, to[0] * self.fstrafe
+        st = me.get("stats", {})
+        mh = st.get("muzzle_height", 7.0)
+        bh = st.get("height", 9.0) * 0.6
+        others = sorted((e for e in obs["mechs"] if e["kind"] == "mech" and e["id"] != m["id"]),
+                        key=lambda e: hdist(p2, e["pos"]))[:3]
+        cubes = [cb for cb in obs.get("cubes", []) if hdist(p2, cb["pos"]) < 40 and abs(cb["pos"][2] - me["pos"][2]) < 4]
+        cube = min(cubes, key=lambda cb: hdist(p2, cb["pos"])) if cubes else None
+        c_now, r_now = self.zone_at(obs["zone"], t)
+        soon = min(1.0, max(0.1, 1 - (obs["zone"]["shrink_start"] - t) / 25.0))
+        best, bm, blocked_side = -1e18, (0.0, 0.0), False
+        for k in range(-1, 16):
+            if k < 0:
+                cx, cy, dx, dy, r = p2[0], p2[1], 0.0, 0.0, 0.0
+                cz = me["pos"][2]
+            else:
+                a = k * math.pi / 8
+                dx, dy, r = math.cos(a), math.sin(a), 6.0
+                cx, cy = p2[0] + dx * r, p2[1] + dy * r
+                if not self.world.walkable(cx, cy) or not self.world.walk_clear(p2, (cx, cy)):
+                    if dx * sx + dy * sy > 0.9:
+                        blocked_side = True
+                    continue
+                cz = self.world.ground_at(cx, cy)
+            sc = -1.1 * abs(hdist((cx, cy), m["pos"]) - rp) - r * 0.4
+            los = self.world.los([cx, cy, cz + mh], c)
+            if los:
+                sc += 45 * want_los
+            body = [cx, cy, cz + bh]
+            for e in others:
+                if hdist(e["pos"], (cx, cy)) <= 170 and self.world.los([e["pos"][0], e["pos"][1], e["pos"][2] + 8.0], body):
+                    sc -= 30
+            dz = hdist((cx, cy), c_now) - r_now
+            if dz > -5:
+                sc -= 150 + 5 * (dz + 5)
+            dn = hdist((cx, cy), c_next) - r_next
+            if dn > -5:
+                sc -= soon * (25 + 0.8 * (dn + 5))
+            if cube is not None:
+                sc += 1.5 * (hdist(p2, cube["pos"]) - hdist((cx, cy), cube["pos"]))
+            if want_los > 0:
+                sc += 9 * (dx * sx + dy * sy)
+            if k < 0:
+                sc -= 8
+                if want_los < 0 and not los:
+                    sc += 14
+            if sc > best:
+                best, bm = sc, (dx, dy)
+        if blocked_side:
+            self.fstrafe = -self.fstrafe
+            self.fstrafe_until = t + 0.5
+        boost = light is not None and d > 50 and me["energy"] > 55 and want_los > 0
+        return bm, boost
 
     def t_seen(self, e, t):
         v = self.enemy_seen.get(e["id"])

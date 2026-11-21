@@ -23,3 +23,9 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   scoring and the laser block of `mech/brain.go` in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v28 practice combat core (`V28_ENGAGE` engage rules and target scoring, `V28_FIGHT` `fight_move` position
+  scoring with preferred ranges and lightning/mortar range floors plus mid-fight cube grabs, `V28_AIM` 75 ms latency
+  lead and slew-aware fire check, `V28_RETREAT` lose-rule retreat window) is adapted from `mech/brain.go` (`step`,
+  `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
+  [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
+  Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
