@@ -96,6 +96,24 @@ seen = {12: (BASE["t"] - 3.0, [x + 60, y, BASE["self"]["pos"][2]], [0, 0, 0], 14
 n, v = run(NEW, o, seen), run(OLD, o, seen)
 check("i-b hurt+crate+recent mech: cover", not any(n["fire"]) and n["mode"] in ("heal-cover", "heal-to-cover"), n, v)
 
+# (i-c) hurt, NPC drone ~30 m hits us with no attacker id (as our sim sends it) -> v24 still shoots back, like v19
+o = base(hp=800)
+x, y = me_xy(o)
+for k in range(16):
+    a = k * math.tau / 16
+    q = (x + 30 * math.cos(a), y + 30 * math.sin(a))
+    if W.walkable(*q) and W.los((x, y, o["self"]["pos"][2] + 7), (q[0], q[1], W.ground_at(*q) + 1.75)):
+        break
+gz = W.ground_at(*q)
+o["mechs"] = [{"id": 103, "kind": "npc", "pos": [q[0], q[1], gz], "vel": [0, 0, 0], "aim": [0, 0], "hp": 350, "max_hp": 350}]
+o["events"] = [{"type": "damaged", "amount": 25, "weapon": "npc", "bearing": math.atan2(q[1] - y, q[0] - x), "by": None}]
+aim_at(o, (q[0], q[1], gz + CFG["npc"]["height"] * 0.5))
+n, v = run(NEW, o), run(OLD, o)
+check("i-c hurt+NPC hit (by=None): shoot back", any(n["fire"]) and n["fire"] == v["fire"] and n["mode"] == v["mode"] == "npc", n, v)
+o["events"] = []
+n, v = run(NEW, o), run(OLD, o)
+check("i-d hurt+NPC near, no hit: hold fire", not any(n["fire"]) and n["mode"].startswith("heal") and any(v["fire"]), n, v)
+
 # (ii) hurt, no target, empty slot, laser pickup ~50 m away -> both go loot it
 o = base(hp=800)
 x, y = me_xy(o)

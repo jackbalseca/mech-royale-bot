@@ -197,6 +197,11 @@ class Bot:
                 self.hostile[e["by"]] = t
             elif e["type"] == "damaged" and e.get("by") is not None:
                 self.npc_dmg[e["by"]] = t  # v24-heal: NPCs (ids >= 100) that are shooting us
+            elif e["type"] == "damaged" and e.get("weapon") == "npc":
+                # v24-heal: shortcut: no attacker id (our sim sends by=None), so blame every visible NPC within 50 m
+                for n in npcs:
+                    if hdist(p2, n["pos"]) < 50:
+                        self.npc_dmg[n["id"]] = t
             elif e["type"] == "hit" and e.get("target") is not None and e["target"] < 100:
                 self.hostile[e["target"]] = t  # we started it: they'll come for us
         ffa = self.ffa_score >= 1
