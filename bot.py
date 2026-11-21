@@ -55,6 +55,10 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v39 (port audit, Go coverMove; giddygiddyboy MIT): (a) if the spot we stand on is already hidden from the threats,
+# stay there; (b) after losing, keep hiding from mechs seen in the last 2.5 s until 1.5 s after the last losing tick,
+# even with no target in view (we used to drop straight to loot/idle).
+V39_HIDE = True
 
 
 def wrap(a):
@@ -711,6 +715,14 @@ class Bot:
         self.recovering = self.recovering and hp_frac < 0.85
         if V28_RETREAT and t - self.lose_t >= 1.5:
             self.recovering = False
+        if V39_HIDE and self.recovering and not zone_danger and self.ffa_score < 1:
+            seen = [{"pos": v[1]} for v in self.enemy_seen.values() if t - v[0] < 2.5]
+            cov = self.find_cover(p2, seen, t, c_soon, r_soon) if seen else None
+            if cov is not None:
+                if hdist(p2, cov) < 2.5:
+                    return "hide", cov, (0.0, 0.0), False, False
+                mv, wp = self.nav_move(p2, cov, onroof)
+                return "to-hide", wp, mv, False, False
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:
@@ -844,6 +856,11 @@ class Bot:
         if self.cover is not None and t - self.cover_t < 1.0:
             return self.cover
         eyes = [(e["pos"][0], e["pos"][1], e["pos"][2] + 8.0) for e in threats[:4]]
+        if V39_HIDE and hdist(p2, c_soon) <= r_soon - 5 and self.world.walkable(*p2):
+            gz = self.world.ground_at(*p2)
+            if not any(self.world.los(ey, (p2[0], p2[1], gz + 4.5)) or self.world.los(ey, (p2[0], p2[1], gz + 8.5)) for ey in eyes):
+                self.cover, self.cover_t = (p2[0], p2[1]), t
+                return self.cover  # already hidden: stay
         best = None
         for r in (7.0, 12.0, 18.0, 25.0, 34.0):
             for k in range(16):
