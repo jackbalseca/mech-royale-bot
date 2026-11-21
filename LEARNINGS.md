@@ -53,6 +53,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v32 `e3a0da9` | v28 + opening recovery: withdraw 5.5 s if losing the trade in the first 60 s (Kanyaraasi) | 5.13 | 0.00 vs v28 | **repeated score**: identical to v28, so the trigger never fired in the 48 official matches (early fights start near full HP). No effect |
 | **v34 `927da08`** | **v28 + upgrade orders: plating, armor, laser_damage, laser_charge, nanites... (practice)** | **5.15** | +0.02 vs v28 | noise; **baseline** by the highest-score rule |
 | v35b `a49150e` | v34 + never take a mortar (giddygiddyboy NoMortar) | 4.79 | -0.36 vs v34 | reject: **keep the mortar** (third loss for no-mortar, even with the v28 core) |
+| **v36 `fa73532`** | **v34 + fight when cornered (no open-ground fleeing) + Go's exact lose/finish rules (port audit)** | **5.27** | +0.12 vs v34 | **keep: current best / baseline**. Fixing port fidelity beats porting more features |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
