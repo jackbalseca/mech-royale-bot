@@ -30,6 +30,7 @@ Last updated: Sat Nov 21, 12:55 AM ET.
 | v14 `c0a7d14` | active farming (walk to drones/crates, cubes to 120 m) | 3.69 | -0.23 | reject |
 | v15 `08fe076` | quiet: no optional gunfire | 3.85 | -0.07 vs v10 | no effect: **sound is not the cost** |
 | **v16 `3881e26`** | **stay put when idle (no drift to the zone hold point)** | **4.02** | +0.10 vs v10 | **keep: current best** (edge of noise, consistent with the exposure pattern) |
+| v17a `dd5fc9c` | shorter weapon-pickup search (60/40 m instead of 160/90 m) | 3.75 | -0.27 vs v16 | reject: **weapons are worth the walk** |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -42,6 +43,9 @@ Every change that **reduced exposure or aggro, or shortened fights**, gained:
 
 **Refined by v15 (Sat 12:56 AM):** removing optional gunfire changed nothing (-0.07), so being *heard* is not
 the cost. What hurts is **movement and visibility**: roaming (v14), open-street backpedalling (v7), longer fights (v4).
+
+**Exception found by v17a (Sat 1:40 AM):** walking to *weapons* pays; cutting the weapon search to 60/40 m cost -0.27.
+Roaming for drones/crates/cubes (v14) is what hurts, not fetching a laser/lightning/mortar.
 
 **Rule of thumb:** win the fight you're in quickly, then stay out of sight and don't roam. Don't roam, don't make noise,
 don't start optional fights. Gunfire is heard 320 m away, and being seen by one squad bot tips off the hunters.
