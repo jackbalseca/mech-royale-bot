@@ -28,6 +28,7 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
+V26_DODGEHOLD = True
 
 
 def wrap(a):
@@ -84,6 +85,7 @@ class Bot:
         self.cover_t = -99.0
         self.heal = False  # v24-heal: hurt with no mech target -> don't deal damage, don't roam, regen
         self.npc_dmg = {}  # v24-heal: npc id -> last time it damaged us
+        self.bd_hold = None  # v26-dodgehold: (until_t, sidestep dir) of the current bullet sidestep
         # warm up lazy imports / caches so the first real decision isn't slow
         try:
             self.nav.steer((0.0, 0.0), (100.0, 50.0))
@@ -378,6 +380,14 @@ class Bot:
                 bd = self.bullet_dodge(obs, me, p2)
             except Exception:
                 bd = None
+            if V26_DODGEHOLD:
+                # v26-dodgehold: a reversal takes ~0.4 s (58.5 m/s^2), so keep one sidestep direction for 0.35 s instead of
+                # flipping every tick (unless it walks into a wall; zone mode keeps v24b behaviour).
+                h = self.bd_hold
+                if h is not None and t < h[0] and not mode.startswith("zone") and self.world.walkable(p2[0] + h[1][0] * 4, p2[1] + h[1][1] * 4):
+                    bd = h[1]
+                elif bd is not None:
+                    self.bd_hold = (t + 0.35, bd)
             if bd is not None:
                 move = (move[0] * 0.3 + bd[0] * 0.95, move[1] * 0.3 + bd[1] * 0.95)
                 n = math.hypot(*move)
