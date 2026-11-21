@@ -46,12 +46,15 @@ def unit(v):
 
 class Bot:
     name = "jb-mech"
+    SALT = 1
 
     def __init__(self, hello):
         t0 = time.time()
         self.cfg = cfg = hello["config"]
         self.slot = hello["slot"]
-        self.rng = random.Random(hello.get("seed", 0))
+        # RE-ROLL ONLY: same strategy as v3 293eefc; the salt just changes our own random choices (strafe timing,
+        # scan phase, unstick direction) so the 48 practice matches play out differently. Used to measure scorer noise.
+        self.rng = random.Random(hello.get("seed", 0) * 1000003 + self.SALT)
         self.world = World(hello["map"]["dir"])
         g = dict(np.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "nav.npz")))
         self.nav = Nav(self.world, g)
@@ -216,9 +219,7 @@ class Bot:
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60 if vis else 20
-                if t - self.last_dmg[0] < 1.0 and vis:
-                    score -= 120  # it's shooting us right now: face it
+                score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
@@ -444,12 +445,10 @@ class Bot:
                        and self.t_seen(e, t)]
             n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
             # recovering: break line of sight, regen, then come back
-            if (hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7)) and obs["alive"] > 2:
+            if hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7):
                 self.recovering = True
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if obs["alive"] <= 2:
-                self.recovering = False  # last opponent: retreating only gives them free shots
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
