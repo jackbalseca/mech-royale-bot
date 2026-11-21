@@ -28,6 +28,7 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
+V26_DODGEREACH = True
 
 
 def wrap(a):
@@ -436,7 +437,7 @@ class Bot:
         pos = me["pos"]
         scale = 1 + self.cfg["cubes"]["size_per_cube"] * me.get("cubes", 0)
         cz = pos[2] + 4.5 * scale
-        reach = 3.6 * scale
+        reach = (5.0 if V26_DODGEREACH else 3.6) * scale  # v26-dodgereach: also dodge bullets that would only graze us
         dx = dy = 0.0
         for pr in obs.get("projectiles", []):
             if pr["kind"] == "mortar":
