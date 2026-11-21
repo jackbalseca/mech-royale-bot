@@ -1,0 +1,6 @@
+.git
+cache
+check
+tools
+*.md
+__pycache__
