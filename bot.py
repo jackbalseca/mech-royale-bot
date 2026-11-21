@@ -612,6 +612,13 @@ class Bot:
     def loadout_gain(self, kinds, k):
         if None in kinds:
             return WEAPON_RANK.get(k, 0)
+        # v20: never trade the gun away. Lightning reaches only 45 m and the laser fires once per 2.4 s, so a
+        # laser+lightning loadout (v19 swapped the gun out for it) has ~126 dmg/s at 60-120 m vs ~190-210 for
+        # gun+laser. A swap is worth it only if the new weapon beats the non-gun weapon it would replace;
+        # the gain magnitude (how far we walk for it) is unchanged from v19 where the swap is still allowed.
+        others = [x for x in kinds if x != "gun"]
+        if others and WEAPON_RANK.get(k, 0) <= min(WEAPON_RANK.get(x, 0) for x in others):
+            return 0.0
         worst = min(WEAPON_RANK.get(x, 0) for x in kinds)
         return WEAPON_RANK.get(k, 0) - worst
 
@@ -626,9 +633,9 @@ class Bot:
                 continue
             if None in kinds:
                 return pk["id"], None
-            # swap out the worst weapon (never a charging laser)
+            # swap out the worst weapon (never the gun, never a charging laser)
             cand = [(WEAPON_RANK.get(w["kind"], 0), i) for i, w in enumerate(me["weapons"])
-                    if w and not (w["kind"] == "laser" and w.get("charge", 0) > 0)]
+                    if w and w["kind"] != "gun" and not (w["kind"] == "laser" and w.get("charge", 0) > 0)]
             if not cand:
                 return None
             return pk["id"], min(cand)[1]
