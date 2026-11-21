@@ -71,6 +71,9 @@ python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8
 - The sim (`tools/sim.py`) is an approximation. Use it to compare **A vs B**, not to predict
   absolute scores. Practice mode uses our stand-in house bots (`tools/house.py`).
 - The real Docker sandbox check (same flags as the scorer) is in `README.md`.
+- **Live tests on the real engine:** `tools/live_browser.js` runs the bot in your browser
+  (Pyodide) in private free-for-all rooms on play.joinbuilders.org against the server's house
+  bots. Instructions are at the top of the file. Log results in `SUBMISSIONS.md`.
 
 ## Submitting
 - **4 submissions per hour per team**, shared by everyone. Coordinate in the team chat
