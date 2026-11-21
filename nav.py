@@ -104,6 +104,8 @@ class Nav:
 
     def steer(self, me, goal):
         """Point to walk toward next on the way from `me` (x, y) to `goal` (x, y)."""
+        me = (float(me[0]), float(me[1]))
+        goal = (float(goal[0]), float(goal[1]))
         if math.dist(me, goal) < 80 and self.w.walk_clear(me, goal):
             return tuple(goal), math.dist(me, goal)
         gn = self.goal_node(goal[0], goal[1])

@@ -298,7 +298,15 @@ class Bot:
             fire[li] = True
 
         # ---- movement
-        mode, goal, move, boost, jump = self.choose_move(obs, me, t, p2, target, side, zone_danger, c_next, r_next, c_soon, r_soon, hp_frac)
+        try:
+            mode, goal, move, boost, jump = self.choose_move(obs, me, t, p2, target, side, zone_danger, c_next, r_next, c_soon, r_soon, hp_frac)
+        except Exception as ex:  # never let a movement bug stop us shooting
+            self.errors = getattr(self, "errors", 0) + 1
+            if self.errors <= 3:
+                import traceback
+                mf.log(traceback.format_exc())
+            u = unit((c_soon[0] - p2[0], c_soon[1] - p2[1]))
+            mode, goal, move, boost, jump = "fallback", None, u, not me["in_zone"], False
         if t < self.unstick_until:
             move = self.unstick_dir
             jump = True
@@ -379,6 +387,7 @@ class Bot:
         return [base + 0.9 * math.sin(self.scan_phase), 0.0]
 
     def nav_move(self, p2, goal, onroof):
+        goal = (float(goal[0]), float(goal[1]))
         if onroof:
             return unit((goal[0] - p2[0], goal[1] - p2[1])), goal
         wp, _ = self.nav.steer(p2, goal)
