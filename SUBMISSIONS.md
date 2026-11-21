@@ -8,7 +8,12 @@ Practice score = mean(16 - place) over 48 matches vs the house squad. Noise is a
 | 2 | BB-1F463041 | df300ff | Fri 9:53 PM | 3.44 | Fixed the 3D-goal crash; fail-safe movement wrapper. (`tools/bots/v1.py`) |
 | 3 | BB-B64270EC | 81d2537 | Fri 9:57 PM | 3.58 | v2: break line of sight to cover when hurt or outnumbered, regen, re-engage; wider weapon search. (`tools/bots/v2.py`) |
 | 4 | BB-4D4C943D | 293eefc | Fri 10:16 PM | 3.81 | v3: in practice, only engage mechs that shot at or aim at us; free-for-all targeting unchanged once free-for-all is detected. Sim: practice 1.56 vs 1.19 (v2); free-for-all 7.91 vs 7.09 (v2). (`tools/bots/v3.py`) |
-| 5 | BB-150F3F5C | 879177e | Fri 10:43 PM | (scoring) | v4: never retreat in the final 1v1; face whoever is hitting us now. CI green. Sim practice = v3. (`tools/bots/v4.py`) |
+| 5 | BB-150F3F5C | 879177e | Fri 10:42 PM | 3.50 | v4: never retreat in the final 1v1; face whoever is hitting us now. CI green. Sim practice = v3. (`tools/bots/v4.py`) |
+| 6 | BB-D884C5A1 | b8006c5 (branch exp-v6-ffa-detect) | Fri 11:13 PM | (scoring) | v6 = v3 + one change: switch to FFA targeting only on an unexplained death before 90 s, or 3+ overall (a late friendly-fire/NPC/zone death no longer disables the passive-squad rule). CI green. Paired sim vs v3: -0.04 +/- 0.04 (sim can't test this well). (`tools/bots/v6.py` on its branch) |
+
+Not submitted: v5 (688cf3a, branch v5-recovery) = v3 + stay healing in cover until 85% HP. Removed the recovery leak (932 -> 0 leak ticks) but paired sim vs v3 was -0.33 +/- 0.19 (0 wins / 4 losses of 24), so it failed our gate.
+
+**Experiment protocol (agreed Fri 11:10 PM):** submissions are experiments. One change at a time from the best official commit, prechecks + CI green first. Keep a change only if it beats the best official score by more than ~0.3 (noise band).
 
 ## Live free-for-all tests (play.joinbuilders.org, real engine vs server house bots, `tools/live_browser.js`)
 
