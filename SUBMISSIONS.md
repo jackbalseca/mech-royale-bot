@@ -13,7 +13,11 @@ Practice score = mean(16 - place) over 48 matches vs the house squad. Noise is a
 | 8 | BB-927E23D7 | b53c940 (branch exp-v8-close) | Fri 11:34 PM | 3.79 | v8 = v3 + closer engagement (gun 40 m, laser 60 m). No effect. |
 | 9 | BB-3D1125E1 | d5e7b76 (branch exp-v3-salt1) | Fri 11:52 PM | 3.75 | **Noise measurement:** v3 with only our RNG salted (same strategy). -0.06 vs v3 -> scorer noise is ~0.1, so score differences above ~0.15 are real. |
 | 10 | BB-7688B567 | 4c977b2 (branch exp-v10-commit) | Sat 12:28 AM | **3.92** | v10 = v3 + commit to fights / finish kills (break off only when losing; never while finishing a target <20% HP). Thresholds adapted from Wolverines/TTUN (MIT). **New best (+0.11).** |
+| 12 | BB-796D14F8 | 1c8f31a (branch exp-v12-strafe) | Sat 12:35 AM | 3.83 | v12 = v10 + random strafe direction every 0.35-1.05 s. -0.09 vs v10 (borderline noise). Rejected. |
+| 14 | BB-7A82F005 | c0a7d14 (branch exp-v14-farm) | Sat 12:45 AM | 3.69 | v14 = v10 + active farming (walk to remembered drones/crates, cubes to 120 m). Sim: +50% cubes. Official -0.23. **Rejected.** |
 | 7 | BB-C8CC3711 | e887124 (branch exp-v7-kite) | Fri 11:25 PM | 3.04 | v7 = v3 + long-range duelling (hold 130 m gun / 160 m laser, backpedal while firing). Sim predicted +0.3 to +1.0; official -0.77. **Rejected.** The sim's house aim model (angular error from jklein07 notes) overstates the long-range advantage vs the real squad. |
+
+**Pattern (Sat 12:50 AM):** every change that increased our exposure (roaming, gunfire noise, open-street kiting, target switching) lost points; changes that reduced exposure/aggro gained. The practice squad shares sightings, so being seen or heard is the cost. v13 (lightning-first ranking) not submitted: its real effect was swapping the gun for a mortar.
 
 **Lessons from official runs:** v6 scoring exactly 3.81 (= v3) shows the scorer is deterministic for identical behaviour, and that the late false-FFA switch never fired in the 48 practice matches. v7 shows the sim is NOT predictive for engagement-range changes: calibrate the sim against official results before trusting it again.
 
