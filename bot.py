@@ -59,6 +59,9 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v43 (port audit finding 5, giddygiddyboy dodge(), MIT): sidestep (weight 1.5, our strafe side) when a visible mech is
+# charging a laser aimed within 0.15 rad of us; boost for it when energy > 25.
+V43_LASERDODGE = True
 
 
 def wrap(a):
@@ -495,6 +498,20 @@ class Bot:
                 bd = self.bullet_dodge(obs, me, p2)
             except Exception:
                 bd = None
+            lz = False
+            if V43_LASERDODGE and self.ffa_score < 1:
+                lx = ly = 0.0
+                for e in obs["mechs"]:
+                    if e["kind"] == "mech" and e.get("charging"):
+                        tm = math.atan2(pos[1] - e["pos"][1], pos[0] - e["pos"][0])
+                        if abs(wrap(e["aim"][0] - tm)) < 0.15:
+                            lx += 1.5 * math.cos(tm + math.pi / 2 * self.fstrafe)
+                            ly += 1.5 * math.sin(tm + math.pi / 2 * self.fstrafe)
+                if lx or ly:
+                    lz = True
+                    vx, vy = (bd[0] + lx, bd[1] + ly) if bd is not None else (lx, ly)
+                    n = math.hypot(vx, vy)
+                    bd = (vx / n, vy / n) if n > 1e-6 else bd
             if V26_DODGEHOLD:
                 # v26-dodgehold: a reversal takes ~0.4 s (58.5 m/s^2), so keep one sidestep direction for 0.35 s instead of
                 # flipping every tick (unless it walks into a wall; zone mode keeps v24b behaviour).
@@ -508,7 +525,7 @@ class Bot:
                 n = math.hypot(*move)
                 if n > 1:
                     move = (move[0] / n, move[1] / n)
-                if me["energy"] > (55 if ki is not None and target is not None else 25):
+                if me["energy"] > (55 if ki is not None and target is not None else 25) or (lz and me["energy"] > 25):
                     boost = True
                 mode += "+bdodge"
         # take a pickup if within reach
