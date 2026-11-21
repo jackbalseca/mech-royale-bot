@@ -354,6 +354,22 @@ class Bot:
                     move = (away[0] + move[0] * 0.3, away[1] + move[1] * 0.3)
                     boost = True
                     mode = "dodge"
+        # bullet dodge (exp-agent-ttun): sidestep incoming bullets. House bots lead our *current* velocity, so a sharp
+        # perpendicular change while a bullet is in flight makes it miss (mid/long range mostly).
+        # Adapted from the Wolverines/TTUN bot (MIT License; see CREDITS.md).
+        if mode not in ("dodge", "unstick") and me["in_zone"]:
+            try:
+                bd = self.bullet_dodge(obs, me, p2)
+            except Exception:
+                bd = None
+            if bd is not None:
+                move = (move[0] * 0.3 + bd[0] * 0.95, move[1] * 0.3 + bd[1] * 0.95)
+                n = math.hypot(*move)
+                if n > 1:
+                    move = (move[0] / n, move[1] / n)
+                if me["energy"] > (55 if ki is not None and target is not None else 25):
+                    boost = True
+                mode += "+bdodge"
         # take a pickup if within reach
         take = self.want_take(obs, me, p2)
         if take:
@@ -397,6 +413,41 @@ class Bot:
         if tt < 0 or tt > 8:
             return None
         return (p[0] + v[0] * tt, p[1] + v[1] * tt)
+
+    def bullet_dodge(self, obs, me, p2):
+        """Unit sidestep direction away from bullets that will pass within reach in <0.9 s, or None.
+        Perpendicular to each bullet's path, away from its closest point of approach (TTUN, MIT)."""
+        pos = me["pos"]
+        scale = 1 + self.cfg["cubes"]["size_per_cube"] * me.get("cubes", 0)
+        cz = pos[2] + 4.5 * scale
+        reach = 3.6 * scale
+        dx = dy = 0.0
+        for pr in obs.get("projectiles", []):
+            if pr["kind"] == "mortar":
+                continue
+            px, py, pz = pr["pos"]
+            vx, vy, vz = pr["vel"]
+            vv = vx * vx + vy * vy + vz * vz
+            if vv < 1:
+                continue
+            tc = ((pos[0] - px) * vx + (pos[1] - py) * vy + (cz - pz) * vz) / vv
+            if tc < 0 or tc > 0.9:
+                continue
+            mx, my, mz = px + vx * tc - pos[0], py + vy * tc - pos[1], pz + vz * tc - cz
+            if math.sqrt(mx * mx + my * my + (mz * 0.5) ** 2) > reach:
+                continue
+            hv = math.hypot(vx, vy) or 1.0
+            nx, ny = -vy / hv, vx / hv
+            if nx * -mx + ny * -my < 0:
+                nx, ny = -nx, -ny
+            dx += nx
+            dy += ny
+        if dx == 0.0 and dy == 0.0:
+            return None
+        u = unit((dx, dy))
+        if u == (0.0, 0.0) or not self.world.walkable(p2[0] + u[0] * 4, p2[1] + u[1] * 4):
+            return None  # don't sidestep into a wall
+        return u
 
     def look_dir(self, me, t, p2, target):
         # someone shot us recently: face them (rear hits do x1.5)
