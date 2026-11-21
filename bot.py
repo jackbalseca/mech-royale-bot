@@ -55,6 +55,9 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v42: zone look-ahead 10 s -> 16 s. v40 (exact zone math) scored -0.14 vs our old math, which over-shrank the circle
+# during shrinks, i.e. extra zone caution helped. Test a bit more caution, everywhere r_soon is used.
+V42_AHEAD = 16.0
 
 
 def wrap(a):
@@ -251,7 +254,7 @@ class Bot:
         # ---- zone
         z = obs["zone"]
         c_now, r_now = self.zone_at(z, t)
-        c_soon, r_soon = self.zone_at(z, t + 10.0)
+        c_soon, r_soon = self.zone_at(z, t + V42_AHEAD)  # v42: look further ahead (v40 showed extra zone caution scores better)
         c_next, r_next = z["next_center"], z["next_radius"]
         d_soon = hdist(p2, c_soon)
         zone_danger = d_soon > r_soon - 8 or not me["in_zone"]
