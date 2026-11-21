@@ -75,6 +75,7 @@ class Bot:
         self.bad_pickups = {}
         self.prev_move = (0.0, 0.0)
         self.recovering = False
+        self.hostile = {}  # mech id -> last time it shot at / aimed at us
         self.cover = None
         self.cover_t = -99.0
         # warm up lazy imports / caches so the first real decision isn't slow
@@ -167,6 +168,17 @@ class Bot:
         npcs = [m for m in obs["mechs"] if m["kind"] == "npc"]
         for m in enemies:
             self.enemy_seen[m["id"]] = (t, m["pos"], m["vel"], m.get("hp", 1400), m.get("weapons", []))
+            # aiming at us (or charging a laser at us) counts as hostile
+            to_me = math.atan2(pos[1] - m["pos"][1], pos[0] - m["pos"][0])
+            d_me = hdist(p2, m["pos"])
+            if d_me < 220 and abs(wrap(m["aim"][0] - to_me)) < (0.25 if m.get("charging") else 0.12):
+                self.hostile[m["id"]] = t
+        for e in obs.get("events", []):
+            if e["type"] == "damaged" and e.get("by") is not None and e["by"] < 100:
+                self.hostile[e["by"]] = t
+            elif e["type"] == "hit" and e.get("target") is not None and e["target"] < 100:
+                self.hostile[e["target"]] = t  # we started it: they'll come for us
+        ffa = self.ffa_score >= 1
 
         # ---- zone
         z = obs["zone"]
@@ -197,6 +209,10 @@ class Bot:
         for m in enemies:
             c = self.center_of(m)
             d = math.dist(muzzle, c)
+            hostile = t - self.hostile.get(m["id"], -99) < 12.0
+            weak = m.get("hp", 1400) < 0.35 * m.get("max_hp", 1400)
+            if not ffa and not hostile and not d < 25:
+                continue  # leave passive mechs alone: shooting them only brings more enemies
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
