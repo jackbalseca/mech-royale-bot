@@ -45,6 +45,20 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 - Read numbers from `hello["config"]`, not hard-coded constants, wherever practical.
 - Angles: yaw is from +x (east), counter-clockwise, in radians. Wrap differences with `wrap()`.
 
+## Guardrails on `main` (set up once per clone)
+```sh
+git config core.hooksPath tools/hooks     # enables the pre-push hook
+```
+- The **pre-push hook** runs `tools/precheck.sh` on every push to `main` and **blocks the push** if
+  anything fails: compile, pinned Dockerfile, no cache/secrets tracked, repo size, no stdout
+  prints, `check.py` PASS with p99 < 15 ms, and a full sim match with zero exceptions in `act()`.
+  You can run it by hand anytime: `tools/precheck.sh` (or `QUICK=1 tools/precheck.sh`).
+- **GitHub Actions** (`.github/workflows/check.yml`) builds the real Docker image and runs the
+  conformance check with the scorer's sandbox flags on every push. **Only submit a commit
+  whose `scorer-check` run is green** (see the repo's Actions tab).
+- Risky experiments go on a branch (`git push origin HEAD:exp-name`), not `main`. Don't use
+  `--no-verify` to skip the hook.
+
 ## Before you submit (every time)
 ```sh
 pip install numpy==2.3.5 scipy==1.16.3   # once

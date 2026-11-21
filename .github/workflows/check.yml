@@ -1,0 +1,24 @@
+# Builds the image exactly like the scorer and runs the kit's conformance check in the
+# scorer's sandbox (no network, 1 CPU, 512 MB, read-only root, uid 65534, /arena read-only).
+# Only submit commits whose check is green.
+name: scorer-check
+on:
+  push:
+  pull_request:
+jobs:
+  docker-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (linux/amd64, must finish < 10 min)
+        run: timeout 600 docker build -t mech-bot .
+      - name: Repo size at this commit (< 20 MB)
+        run: |
+          SIZE=$(git ls-files -z | xargs -0 du -cb | tail -1 | cut -f1)
+          echo "tracked bytes: $SIZE"; test "$SIZE" -lt 20000000
+      - name: Conformance check in the scorer sandbox
+        run: |
+          python3 check/check.py --map-dir /arena -- docker run --rm -i --network none --cpus 1 --memory 512m \
+            --read-only --tmpfs /tmp:rw,size=64m --user 65534:65534 -v "$PWD/arena:/arena:ro" mech-bot | tee check.log
+          grep -q '^PASS' check.log

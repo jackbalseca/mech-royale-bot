@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Blocks pushes to main unless tools/precheck.sh passes. Enable once per clone:
+#   git config core.hooksPath tools/hooks
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: running checks before updating main..." >&2
+    # check the commit being pushed, not uncommitted edits
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+      echo "pre-push: you have uncommitted changes to tracked files; commit or stash them first." >&2
+      exit 1
+    fi
+    tools/precheck.sh || { echo "pre-push: BLOCKED. Fix the failures above (or push to a branch)." >&2; exit 1; }
+  fi
+done
+exit 0
