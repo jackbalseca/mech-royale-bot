@@ -48,6 +48,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | **v28 `05180cc`** | **giddygiddyboy's practice combat core (engage rules, fight positioning, latency aim, short retreat)** | **5.13** | **+0.59 vs v26a** | **keep: current best / baseline** |
 | v29 `fb664bb` | v28 + laser only at mechs + drone/crate fire gating with return fire + eager reload | 4.94 | -0.19 vs v28 | reject; singles v29a/b/c pending |
 | v29a `bb09304` | v28 + laser charged only at mechs | 5.06 | -0.07 vs v28 | no effect; v29's loss is in drone/crate gating or eager reload (likely drone gating: drones are our cube source) |
+| v31 `a9448ac` | v28 + farming between fights (cubes 105 m, crates/drones 150 m at >50% HP; giddygiddyboy chooseLoot) | 4.77 | -0.36 vs v28 | reject: **walking to farm costs us points even with the new combat core** (sim: kills up, survival 133 -> 111 s) |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -77,7 +78,8 @@ hide in cover or stand still while hurt) is worth about -0.19 (4.31 -> 4.50 with
 where we are, so standing still does not keep us hidden. Keep-gun barely fires (4 blocked swaps in 16 sim matches): treat it
 as neutral. The sim predicted the dodge would hurt (more die-first, earlier deaths); it was wrong again.
 So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
-**v28 (Sat 1:40 PM): porting a top team's *combat core* (+0.59) beat porting its tuning tweaks (v27r, -0.08).** The top-10 bots
+**v28 (Sat 1:40 PM): porting a top team's *combat core* (+0.59) beat porting its tuning tweaks (v27r, -0.08).**
+**v31 (Sat 4:55 PM): but porting its economy (farming walks) lost -0.36. Our bot gains from fighting well, not from roaming.** The top-10 bots
 mostly run giddygiddyboy's MIT Go bot (6.19); another team's Python port of its core scored ~5.0-5.2, matching our 5.13.
 
 **Bullet dodge (v24b, +0.29 vs v19) was the strongest single lever before v28.** Extending it to laser charges (v25 laser dodge) added nothing.
