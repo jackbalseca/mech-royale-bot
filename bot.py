@@ -39,6 +39,9 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v32: opening recovery (Kanyaraasi / devakchow team-kanyaraasi-mech-royale, MIT; see CREDITS.md): in the first 60 s,
+# after a hit from a target that is winning the trade (or out-guns our lone gun), withdraw to cover for 5.5 s.
+V32_OPENREC = True
 
 
 def wrap(a):
@@ -76,6 +79,7 @@ class Bot:
         self.stick = (None, -99.0)  # v27: (target id, time chosen)
         self.hit_me = {}  # v28: mech id -> last time it damaged us
         self.lose_t = -99.0  # v28: last tick we were losing a fight
+        self.openrec_until = -99.0  # v32
         self.fstrafe = 1.0
         self.fstrafe_until = 0.0
         self.strafe = 1.0
@@ -631,11 +635,25 @@ class Bot:
             if losing:
                 self.recovering = True
                 self.lose_t = t
-            if V28_RETREAT and not losing and t - self.lose_t >= 1.5:
+            if V32_OPENREC:
+                if finishing or zone_danger or not me["in_zone"] or hp_frac >= 0.8:
+                    self.openrec_until = -99.0
+                elif t < 60 and t - self.hit_me.get(m["id"], -99.0) < 1.5:
+                    ws_me = [w["kind"] for w in me["weapons"] if w]
+                    tw = m.get("weapons") or []
+                    losing_trade = enemy_hp > 1.15 * me["hp"] and enemy_frac > hp_frac + 0.12
+                    gun_only = ws_me == ["gun"]
+                    armed = any(k in tw for k in ("laser", "lightning", "mortar"))
+                    if losing_trade or (gun_only and armed and enemy_hp >= 0.9 * me["hp"]):
+                        self.openrec_until = t + 5.5
+            openrec = V32_OPENREC and t < self.openrec_until
+            if openrec:
+                self.recovering = True
+            if V28_RETREAT and not losing and not openrec and t - self.lose_t >= 1.5:
                 self.recovering = False  # v28: retreat only while losing + 1.5 s (giddygiddyboy LoseRule, MIT)
             if finishing:
                 self.recovering = False
-            if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
+            if self.recovering and not openrec and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
@@ -682,6 +700,8 @@ class Bot:
         self.recovering = self.recovering and hp_frac < 0.85
         if V28_RETREAT and t - self.lose_t >= 1.5:
             self.recovering = False
+        if V32_OPENREC and t < self.openrec_until and hp_frac < 0.8:
+            return "open-recover", None, (0.0, 0.0), False, False  # v32: out of sight in the opening: stay and regen
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:

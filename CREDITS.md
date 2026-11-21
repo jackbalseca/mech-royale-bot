@@ -29,3 +29,8 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v32 (`V32_OPENREC`: in the first 60 s, after a hit from a target with > 1.15x our HP and a 12-point higher HP
+  share, or when we hold only the gun against an armed target with >= 0.9x our HP, withdraw to cover for 5.5 s and
+  hold still out of sight) is adapted from the opening-recovery block of `mech/brain.go` (commit e531338) in
+  [devakchow/team-kanyaraasi-mech-royale](https://github.com/devakchow/team-kanyaraasi-mech-royale) (MIT License).
+  Rewritten in Python from Go; no file copied.
