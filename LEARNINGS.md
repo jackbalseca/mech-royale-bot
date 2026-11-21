@@ -56,6 +56,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | **v36 `fa73532`** | **v34 + fight when cornered (no open-ground fleeing) + Go's exact lose/finish rules (port audit)** | **5.27** | +0.12 vs v34 | **keep: current best / baseline**. Fixing port fidelity beats porting more features |
 | v37b `f89a472` | v36 + aim/fire fidelity fixes (port audit 2-4) | 5.27 | 0.00 vs v36 | **repeated score**, but the changes fire every fight: net zero (coincident total). Not kept (tie goes to the earlier build) |
 | v38 `c24913e` | v36 + fight_move exposure counts mechs seen in the last 2.5 s (port audit 8) | 5.17 | -0.10 vs v36 | no gain, rejected |
+| v39 `fba06b4` | v36 + stay when already hidden + keep hiding after losing (port audit, coverMove) | 5.21 | -0.06 vs v36 | no effect |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
