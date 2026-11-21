@@ -30,8 +30,8 @@ V24_KEEP_GUN = True
 V24_DODGE = True
 V26_DODGEHOLD = True
 # v27: ported from giddygiddyboy's practice mode (MIT License; see CREDITS.md)
-V27_FOCUS = True   # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
-V27_FINISH = True  # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
+V27_FOCUS = False   # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
+V27_FINISH = False  # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
 V27_LETHAL = True  # release a partial laser charge early when it already kills (dmg * 0.7 >= target HP)
 
 
