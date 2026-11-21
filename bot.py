@@ -25,6 +25,18 @@ UPGRADE_PRIORITY = [
     "servos", "sensors", "mortar_reload", "mortar_splash", "mortar_velocity", "jets", "gun_velocity", "laser_pierce",
 ]
 WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
+# v34: giddygiddyboy's upgrade orders (MIT; see CREDITS.md): laser-first in practice (their squad profile), default in FFA
+V34_UPGRADES = True
+UPGRADE_ORDER_LASER = [
+    "plating", "armor", "laser_damage", "laser_charge", "nanites", "gun_damage", "gun_rate", "lightning_efficiency",
+    "lightning_range", "servos", "gun_mag", "gun_velocity", "gyros", "lightning_chain", "reactor", "capacitor",
+    "mortar_reload", "mortar_splash", "mortar_velocity", "sensors", "jets", "laser_pierce",
+]
+UPGRADE_ORDER_DEFAULT = [
+    "plating", "armor", "gun_damage", "nanites", "gun_rate", "lightning_efficiency", "lightning_range", "laser_damage",
+    "servos", "laser_charge", "gun_mag", "gun_velocity", "gyros", "lightning_chain", "reactor", "capacitor",
+    "mortar_reload", "mortar_splash", "mortar_velocity", "sensors", "jets", "laser_pierce",
+]
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
@@ -172,7 +184,10 @@ class Bot:
         # ---- upgrades
         if obs.get("offer"):
             ch = obs["offer"]["choices"]
-            rank = {u: i for i, u in enumerate(UPGRADE_PRIORITY)}
+            order = UPGRADE_PRIORITY
+            if V34_UPGRADES:
+                order = UPGRADE_ORDER_DEFAULT if self.ffa_score >= 1 else UPGRADE_ORDER_LASER
+            rank = {u: i for i, u in enumerate(order)}
             act["pick"] = min(range(len(ch)), key=lambda i: rank.get(ch[i]["id"], 99))
 
         # ---- v19: remember weapon pickups (obs lists them only while visible)

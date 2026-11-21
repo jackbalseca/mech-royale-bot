@@ -29,3 +29,7 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v34 upgrade orders (`UPGRADE_ORDER_LASER` in practice, `UPGRADE_ORDER_DEFAULT` in FFA) are taken from
+  `upgradeOrderLaser` / `upgradeOrder` in `mech/brain.go` at commit e19e3c8 of
+  [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
+  Copyright (c) 2026 giddygiddyboy).
