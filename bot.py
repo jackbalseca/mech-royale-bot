@@ -216,9 +216,7 @@ class Bot:
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60 if vis else 20
-                if t - self.last_dmg[0] < 1.0 and vis:
-                    score -= 120  # it's shooting us right now: face it
+                score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
@@ -444,12 +442,19 @@ class Bot:
                        and self.t_seen(e, t)]
             n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
             # recovering: break line of sight, regen, then come back
-            if (hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7)) and obs["alive"] > 2:
+            # v10: commit to fights and finish kills; break off only when actually losing.
+            # (Thresholds adapted from the Wolverines/TTUN bot, MIT License; see CREDITS.md.)
+            enemy_frac = enemy_hp / max(m.get("max_hp", 1400), 1)
+            threats3 = sum(1 for v in self.enemy_seen.values() if t - v[0] < 3.0 and hdist(p2, v[1]) < 160)
+            finishing = enemy_frac < 0.2 and hp_frac > 0.2 and threats3 <= 2
+            losing = not finishing and ((hp_frac < 0.35 and enemy_frac > hp_frac + 0.1)
+                                        or (threats3 >= 2 and hp_frac < 0.55) or (threats3 >= 3 and hp_frac < 0.8))
+            if losing:
                 self.recovering = True
+            if finishing:
+                self.recovering = False
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if obs["alive"] <= 2:
-                self.recovering = False  # last opponent: retreating only gives them free shots
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
