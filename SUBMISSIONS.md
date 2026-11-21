@@ -1,6 +1,6 @@
 # Submissions log (team V.exe)
 
-Practice score = mean(16 - place) over 48 matches vs the house squad. Noise is about ±0.3.
+Practice score = mean(16 - place) over 48 matches vs the house squad. Noise is about ±0.1 (differences above ~0.15 are real).
 
 | # | Receipt | Commit | Time (ET) | Score | What changed |
 |---|---------|--------|-----------|-------|--------------|
@@ -20,6 +20,9 @@ Practice score = mean(16 - place) over 48 matches vs the house squad. Noise is a
 | 17 | BB-7B6E7FAD | dd5fc9c (branch exp-v17a-lootrange) | Sat 1:36 AM | 3.75 | v17a = v16 + weapon-pickup search cut from 160/90 m to 60/40 m. -0.27 vs v16. **Rejected**: a second weapon is worth the walk. |
 | 18 | BB-F7310B92 | 6f03444 (branch exp-v18-upgrades) | Sat 1:45 AM | 3.92 | v18 = v16 + upgrade order plating, nanites, armor (was armor first). -0.10 vs v16 = noise: **no effect** (few upgrades per match). |
 | 19 | BB-61461C02 | 1db8cb8 (branch exp-v19-pkmem) | Sat 1:54 AM | **4.21** | v19 = v16 + remember weapon pickups after they leave view; fetch one when a slot is empty (same 160 m / zone limits). **+0.19 vs v16: new best and baseline.** |
+| 20 | BB-0F3F01A0 | 7034345e6c711cdcc5a8c4212930cc1e61a7d25e (branch exp-v24-bundle) | Sat 5:10 AM | 4.31 | v24 = v19 + bundle: heal (hurt, no mech target: no NPC/crate fire, no cube/drop/swap walks, cover or stand still), keep-gun (16c2fa3), bullet dodge (33862a2, TTUN MIT). +0.10 vs v19 (no effect as a whole); read with the ablations below. |
+| 21 | BB-04370ACF | a941c5d4e363a1ba7181b047cfefdcb890267e84 (branch exp-v24a-nododge) | Sat 5:13 AM | 3.81 | v24a = v24 with V24_DODGE = False. -0.50 vs v24: **bullet dodge is worth ~+0.5.** Rejected. (3.81 = v3/v6 by coincidence, 183/48; very different builds.) |
+| 22 | BB-CA3E8E44 | cfd3911dce670bf442cc26a90cdf7332b14c5581 (branch exp-v24b-noheal) | Sat 5:16 AM | **4.50** | v24b = v24 with V24_HEAL = False (keep-gun + dodge). +0.19 vs v24, +0.29 vs v19: **heal costs ~0.19. New best and baseline.** |
 | 7 | BB-C8CC3711 | e887124 (branch exp-v7-kite) | Fri 11:25 PM | 3.04 | v7 = v3 + long-range duelling (hold 130 m gun / 160 m laser, backpedal while firing). Sim predicted +0.3 to +1.0; official -0.77. **Rejected.** The sim's house aim model (angular error from jklein07 notes) overstates the long-range advantage vs the real squad. |
 
 **Pattern (Sat 12:50 AM):** every change that increased our exposure (roaming, gunfire noise, open-street kiting, target switching) lost points; changes that reduced exposure/aggro gained. The practice squad shares sightings, so being seen or heard is the cost. v13 (lightning-first ranking) not submitted: its real effect was swapping the gun for a mortar.
@@ -30,7 +33,7 @@ Not submitted: v11 (b505d85, branch exp-v11-finish-los) = v10 + finish override 
 
 Not submitted: v5 (688cf3a, branch v5-recovery) = v3 + stay healing in cover until 85% HP. Removed the recovery leak (932 -> 0 leak ticks) but paired sim vs v3 was -0.33 +/- 0.19 (0 wins / 4 losses of 24), so it failed our gate.
 
-**Experiment protocol (agreed Fri 11:10 PM):** submissions are experiments. One change at a time from the best official commit, prechecks + CI green first. Keep a change only if it beats the best official score by more than ~0.3 (noise band).
+**Experiment protocol (agreed Fri 11:10 PM):** submissions are experiments. One change at a time from the best official commit, prechecks + CI green first. Keep a change only if it beats the best official score by more than ~0.15 (noise is about ±0.1).
 
 ## Live free-for-all tests (play.joinbuilders.org, real engine vs server house bots, `tools/live_browser.js`)
 

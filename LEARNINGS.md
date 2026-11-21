@@ -1,7 +1,7 @@
 # LEARNINGS.md: what the official scorer has taught us (team V.exe)
 
 Read this before proposing any change. It is the evidence behind every rule in `CLAUDE.md`.
-Last updated: Sat Nov 21, 12:55 AM ET.
+Last updated: Sat Nov 21, 5:16 AM ET.
 
 ## How the official practice score behaves
 - **It is deterministic.** Practice runs the same 48 private seeds every time. Resubmitting identical behaviour
@@ -32,7 +32,10 @@ Last updated: Sat Nov 21, 12:55 AM ET.
 | v16 `3881e26` | stay put when idle (no drift to the zone hold point) | 4.02 | +0.10 vs v10 | keep (edge of noise, consistent with the exposure pattern) |
 | v17a `dd5fc9c` | shorter weapon-pickup search (60/40 m instead of 160/90 m) | 3.75 | -0.27 vs v16 | reject: **weapons are worth the walk** |
 | v18 `6f03444` | upgrade order: plating, nanites, then armor | 3.92 | -0.10 vs v16 | no effect: upgrade order barely matters | Same 3.92 as v10 with a different build: a repeat by coincidence (188/48), not identical behaviour.
-| **v19 `1db8cb8`** | **remember weapon pickups after they leave view; fetch one when a slot is empty** | **4.21** | +0.19 vs v16 | **keep: current best / baseline** |
+| v19 `1db8cb8` | remember weapon pickups after they leave view; fetch one when a slot is empty | 4.21 | +0.19 vs v16 | keep |
+| v24 `7034345` | **bundle** (team decision, not one change): heal + keep-gun + bullet dodge | 4.31 | +0.10 vs v19 | no effect as a whole; the ablations separate the parts |
+| v24a `a941c5d` | v24 without bullet dodge (heal + keep-gun) | 3.81 | -0.50 vs v24 | reject: **dodge is worth ~+0.5**. 3.81 = v3/v6 by coincidence (183/48), very different builds |
+| **v24b `cfd3911`** | **v24 without heal (keep-gun + bullet dodge)** | **4.50** | +0.19 vs v24, +0.29 vs v19 | **keep: heal costs ~0.19. Current best / baseline** |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -52,6 +55,13 @@ Roaming for drones/crates/cubes (v14) is what hurts, not fetching a laser/lightn
 **Confirmed by v19 (Sat 1:58 AM):** remembering weapons we saw and fetching one when a slot is empty gave +0.19.
 Weapon acquisition is our strongest lever so far.
 
+**Learned from v24 + ablations (Sat 5:16 AM):** **dodging inside fights pays**: the bullet sidestep is worth about +0.50
+(v24 4.31 -> 3.81 without it), our largest single gain. **Passive hiding/healing costs**: the heal mode (no farming,
+hide in cover or stand still while hurt) is worth about -0.19 (4.31 -> 4.50 without it), because the hunters always know
+where we are, so standing still does not keep us hidden. Keep-gun barely fires (4 blocked swaps in 16 sim matches): treat it
+as neutral. The sim predicted the dodge would hurt (more die-first, earlier deaths); it was wrong again.
+So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
+
 **Rule of thumb:** win the fight you're in quickly, then stay out of sight and don't roam. Don't roam, don't make noise,
 don't start optional fights. Gunfire is heard 320 m away, and being seen by one squad bot tips off the hunters.
 
@@ -64,7 +74,7 @@ don't start optional fights. Gunfire is heard 320 m away, and being seen by one 
 - **Weapon-rank tweaks** (v13, not submitted): `WEAPON_RANK` mainly controls *swaps*. Setting gun=0 made us
   trade the gun for a mortar. Check `loadout_gain()` effects before changing ranks.
 - **Holding still to heal** (v5/v9, sim only): removed the recovery "leak", but the sim got worse in exactly the
-  matches where it triggered. Not tried officially.
+  matches where it triggered. **Tried officially as v24's heal mode: about -0.19** (v24 4.31 vs v24b 4.50 without it).
 
 ## Testing tools: what each one can and can't tell you
 | Tool | Good for | Not good for |
@@ -84,7 +94,7 @@ Measured real house-bot gun accuracy (spectator feed, 5 live matches): experts 9
 2. ~~Stay put when idle~~: tested as v16, 4.02 (+0.10). Was: v10 still walks toward a zone hold point and up to 160 m for weapons when idle.
    Holding near cover until the zone forces a move would cut exposure further.
 3. **Pick idle spots that are hard to see** (few long sightlines), not just the nearest cover.
-4. **Recovery that doesn't leak** (v5/v9 idea), but only combined with low-exposure idling.
+4. ~~Recovery that doesn't leak~~: tested as v24's heal mode, about -0.19. Rejected.
 
 ## Outside sources
 - Wolverines / TTUN bot (MIT): [varchaskukreja/TTUN](https://github.com/varchaskukreja/TTUN). v10's thresholds

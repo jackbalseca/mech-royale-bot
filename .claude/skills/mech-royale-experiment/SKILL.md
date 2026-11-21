@@ -13,7 +13,7 @@ Follow these steps in order. They encode what the official scorer taught us (see
 - Check that the idea isn't already in "Things that look good but aren't" in `LEARNINGS.md`.
 
 ## 1. Frame the experiment (write it down before coding)
-- **Parent (baseline rule):** always the highest *official* score (currently v19 `1db8cb836b21bc00e6d15f3399b5e9b0b0ea1c60`, 4.21, branch exp-v19-pkmem). Never build on a lower-scoring commit.
+- **Parent (baseline rule):** always the highest *official* score (currently v24b `cfd3911dce670bf442cc26a90cdf7332b14c5581`, 4.50, branch exp-v24b-noheal). Never build on a lower-scoring commit.
   Check `SUBMISSIONS.md` for a newer best.
 - **One change only.** Name the failure mode it fixes and the mechanism.
 - **Exposure check:** does it make the bot more visible, more audible, roam more, or fight longer? If yes,
