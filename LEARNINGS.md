@@ -40,6 +40,12 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v25a `343ecad` | v25 without laser dodge | 4.10 | +0.08 vs v25 | laser dodge: **no effect** (noise) |
 | v25b `d8766a6` | v25 without laser seek | 4.25 | +0.23 vs v25 | laser seek to 240 m **costs ~0.23** |
 | v25c `8a73e9b` | v25 without no-mortar (takes mortars again) | 4.17 | +0.15 vs v25 | refusing mortars **costs ~0.15**. Parts add up (0.46 vs 0.48 drop): small interactions |
+| v26a `89186db` | dodge holds its sidestep 0.35 s | 4.54 | +0.04 vs v24b | keep (noise, but best before v28) |
+| v26b `e2fd894` | dodge never boosts | 3.85 | -0.65 vs v24b | reject: **the boost is the dodge** |
+| v26c `8d18fc4` | dodge reach 3.6 -> 5.0 | 4.21 | -0.29 vs v24b | reject: over-dodging hurts |
+| v26d `25b327e` | supply-drop capture | 4.40 | -0.10 vs v24b | no effect |
+| v27r `1bf5a51` | giddygiddyboy's latest tweaks only (focus, finish, lethal, fight cubes) | 4.46 | -0.08 vs v26a | no effect: tweaks need their combat core |
+| **v28 `05180cc`** | **giddygiddyboy's practice combat core (engage rules, fight positioning, latency aim, short retreat)** | **5.13** | **+0.59 vs v26a** | **keep: current best / baseline** |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -69,7 +75,10 @@ hide in cover or stand still while hurt) is worth about -0.19 (4.31 -> 4.50 with
 where we are, so standing still does not keep us hidden. Keep-gun barely fires (4 blocked swaps in 16 sim matches): treat it
 as neutral. The sim predicted the dodge would hurt (more die-first, earlier deaths); it was wrong again.
 So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
-**Bullet dodge (v24b, +0.29 vs v19) is the strongest lever so far.** Extending it to laser charges (v25 laser dodge) added nothing.
+**v28 (Sat 1:40 PM): porting a top team's *combat core* (+0.59) beat porting its tuning tweaks (v27r, -0.08).** The top-10 bots
+mostly run giddygiddyboy's MIT Go bot (6.19); another team's Python port of its core scored ~5.0-5.2, matching our 5.13.
+
+**Bullet dodge (v24b, +0.29 vs v19) was the strongest single lever before v28.** Extending it to laser charges (v25 laser dodge) added nothing.
 
 **Rule of thumb:** win the fight you're in quickly, then stay out of sight and don't roam. Don't roam, don't make noise,
 don't start optional fights. Gunfire is heard 320 m away, and being seen by one squad bot tips off the hunters.
