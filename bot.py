@@ -33,6 +33,7 @@ V26_DODGEHOLD = True
 V27_FOCUS = True   # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
 V27_FINISH = True  # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
 V27_LETHAL = True  # release a partial laser charge early when it already kills (dmg * 0.7 >= target HP)
+V27_FIGHTLOOT = True  # mid-fight, walk to the nearest cube within 70 m (40 m at <= 50% HP); keep shooting
 
 
 def wrap(a):
@@ -594,6 +595,14 @@ class Bot:
                 want = 85.0
             else:
                 want = 60.0
+            if V27_FIGHTLOOT:  # v27r: grab cubes during fights (giddygiddyboy FightLoot 70, MIT)
+                rr = 70.0 if hp_frac > 0.5 else 40.0
+                near = [cb for cb in obs.get("cubes", []) if hdist(p2, cb["pos"]) < rr
+                        and abs(cb["pos"][2] - me["pos"][2]) < 4 and hdist(cb["pos"], c_soon) < r_soon - 10]
+                if near:
+                    cb = min(near, key=lambda q: hdist(p2, q["pos"]))
+                    mv, wp = self.nav_move(p2, cb["pos"], onroof)
+                    return "fight-cube", wp, mv, False, False
             if V27_FINISH and enemy_frac < 0.38 and hp_frac > 0.42 and threats3 <= 2:
                 want = 20.0  # v27: close in to finish a weak target (giddygiddyboy, MIT)
             if not vis:
