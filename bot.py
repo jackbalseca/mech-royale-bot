@@ -6,6 +6,7 @@ Layers, top to bottom each tick:
   3. aiming+fire  (lead for the gun, direct for laser, cone for lightning, ballistic mortar)
   4. movement     (zone > retreat > fight spacing + strafe > loot > farm > drop > hold zone)
 """
+import collections
 import math
 import os
 import random
@@ -39,6 +40,9 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v30: navigation fixes (giddygiddyboy, MIT; see CREDITS.md)
+V30_UNSTICK = True  # under 1.2 m/s for 0.7 s while trying to move: random direction for 0.5 s, jump once
+V30_COVER = True    # if no straight-line cover within 34 m, search the walk grid (3 m lattice) for cover around corners
 
 
 def wrap(a):
@@ -84,6 +88,8 @@ class Bot:
         self.stuck_t = 0.0
         self.unstick_until = 0.0
         self.unstick_dir = (1.0, 0.0)
+        self.stuck_since = -1.0  # v30
+        self.unstick_jump = False  # v30: jump only on the first unstick tick
         self.last_dmg = None  # (t, bearing, by)
         self.enemy_seen = {}  # id -> (t, pos, vel, hp, weapons)
         self.noise = []  # (t, bearing, dist, kind)
@@ -238,7 +244,22 @@ class Bot:
         zone_danger = d_soon > r_soon - 8 or not me["in_zone"]
 
         # ---- stuck detection
-        if self.last_pos is not None:
+        if V30_UNSTICK:
+            vel = me.get("vel") or [0, 0, 0]
+            trying = math.hypot(*self.prev_move) > 0.5 and t >= self.unstick_until
+            if trying and math.hypot(vel[0], vel[1]) < 1.2 and me["grounded"]:
+                if self.stuck_since < 0:
+                    self.stuck_since = t
+                elif t - self.stuck_since > 0.7:
+                    a = self.rng.uniform(0.0, TAU)
+                    self.unstick_dir = (math.cos(a), math.sin(a))
+                    self.unstick_until = t + 0.5
+                    self.unstick_jump = True
+                    self.stuck_since = -1.0
+            else:
+                self.stuck_since = -1.0
+            self.last_pos = p2
+        elif self.last_pos is not None:
             sp = hdist(p2, self.last_pos) / 0.1
             want = math.hypot(*self.prev_move)
             if want > 0.5 and sp < 1.5 and me["grounded"]:
@@ -246,7 +267,7 @@ class Bot:
             else:
                 self.stuck_t = max(0.0, self.stuck_t - 0.05)
         self.last_pos = p2
-        if self.stuck_t > 0.8 and t > self.unstick_until:
+        if not V30_UNSTICK and self.stuck_t > 0.8 and t > self.unstick_until:
             self.unstick_until = t + 1.2
             a = math.atan2(self.prev_move[1], self.prev_move[0]) + self.rng.choice([-1, 1]) * self.rng.uniform(0.6, 1.6)
             self.unstick_dir = (math.cos(a), math.sin(a))
@@ -448,8 +469,12 @@ class Bot:
             mode, goal, move, boost, jump = "fallback", None, u, not me["in_zone"], False
         if t < self.unstick_until:
             move = self.unstick_dir
-            jump = True
-            boost = True
+            if V30_UNSTICK:
+                jump = self.unstick_jump
+                self.unstick_jump = False
+            else:
+                jump = True
+                boost = True
             mode = "unstick"
         # dodge incoming mortar shells
         for pr in obs.get("projectiles", []):
@@ -834,9 +859,72 @@ class Bot:
                     best = (score, q)
             if best is not None:
                 break
+        if best is None and V30_COVER:
+            try:
+                q = self.bfs_cover(p2, eyes, c_soon, r_soon)
+            except Exception:
+                q = None
+            if q is not None:
+                best = (0.0, q)
         self.cover = best[1] if best else None
         self.cover_t = t
         return self.cover
+
+    def bfs_cover(self, p2, eyes, c_soon, r_soon):
+        """v30 (after giddygiddyboy's coverMove BFS, MIT): breadth-first search on a 3 m lattice of walkable ground,
+        up to ~50 m of path, for the nearest spot no threat can see; prefers spots farther from threats."""
+        w = self.world
+        S = 3.0
+        near_eyes = sorted(eyes, key=lambda e: hdist(p2, e))[:2]
+        wb = getattr(self, "_walk_bytes", None)
+        if wb is None:  # flat byte copy of the walk grid: pure-Python lookups instead of numpy calls
+            wb = self._walk_bytes = w.walk.astype(np.uint8).tobytes()
+        nx, ny, mnx, mny, stp = w.nx, w.ny, w.minx, w.miny, w.step
+
+        def walk_at(x, y):
+            i = int((x - mnx) / stp + 0.5)
+            j = int((y - mny) / stp + 0.5)
+            return 0 <= i < nx and 0 <= j < ny and wb[j * nx + i] == 1
+
+        def ok(gx, gy):
+            return walk_at(gx * S, gy * S)
+
+        start = (int(round(p2[0] / S)), int(round(p2[1] / S)))
+        if not ok(*start):
+            cand = [(start[0] + dx, start[1] + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)]
+            cand = [c for c in cand if ok(*c)]
+            if not cand:
+                return None
+            start = min(cand, key=lambda c: hdist(p2, (c[0] * S, c[1] * S)))
+        queue = collections.deque([(start, 0)])
+        seen = {start}
+        best = None
+        t_end = time.perf_counter() + 0.004  # line-of-sight budget: 4 ms per search (cached 1 s by find_cover)
+        while queue:
+            (gx, gy), st = queue.popleft()
+            if st > 17 or (best is not None and st * S * 2 > best[0] + 30):
+                break
+            if st > 0 and (gx + gy) % 2 == 0 and time.perf_counter() < t_end:
+                x, y = gx * S, gy * S
+                if hdist((x, y), c_soon) <= r_soon - 5:
+                    gz = w.ground_at(x, y)
+                    if not any(w.los(ey, (x, y, gz + 4.5)) or w.los(ey, (x, y, gz + 8.5)) for ey in near_eyes):
+                        sc = st * S * 2 - min(min(hdist((x, y), (e[0], e[1])) for e in eyes), 80.0) * 0.25
+                        if best is None or sc < best[0]:
+                            best = (sc, (x, y))
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nb = (gx + dx, gy + dy)
+                if nb in seen or not ok(*nb) or not walk_at((gx + dx * 0.5) * S, (gy + dy * 0.5) * S):
+                    continue
+                seen.add(nb)
+                queue.append((nb, st + 1))
+        if best is None:
+            return None
+        x, y = best[1]
+        gz = w.ground_at(x, y)
+        if any(w.los(ey, (x, y, gz + 4.5)) or w.los(ey, (x, y, gz + 8.5)) for ey in eyes):
+            return None  # visible to one of the farther threats
+        return best[1]
 
     def strafed(self, mv, target, t, k):
         m, c = target[0], target[1]

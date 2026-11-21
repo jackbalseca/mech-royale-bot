@@ -29,3 +29,8 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v30 (`V30_UNSTICK`: under 1.2 m/s for 0.7 s while moving -> random direction for 0.5 s with one jump;
+  `V30_COVER`: breadth-first search of walkable ground for a spot hidden from threats, scored by path length and
+  distance from threats) is adapted from `step` and `coverMove` in `mech/brain.go` at commit e19e3c8 of
+  [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
+  Copyright (c) 2026 giddygiddyboy). Rewritten in Python (3 m lattice, 4 ms line-of-sight budget); no file copied.
