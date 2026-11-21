@@ -75,6 +75,32 @@ python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8
   entry must be top-32 on practice **and** strong in free-for-all. Check the free-for-all sim
   results before picking.
 
+## Strategy notes (how to think about changes)
+- Every place is worth the same: going from 16th to 15th is +1, the same as 2nd to 1st.
+  Track **how often we score 0** (die first), not just the mean. A policy that survives longer
+  but still dies first scores nothing.
+- **Practice:** the squad shares sightings, never fights itself, and sends the weakest hunter
+  first. More hunters join as we kill them, and all of them hunt late. Non-hunters leave us
+  alone unless we hurt them. That's why v3 only engages mechs that shot at or aim at us.
+  The goal: kill each pursuer cheaply, recover behind cover, survive the next one.
+- **Free-for-all (qualifying and final):** when others are fighting each other, staying healthy
+  behind cover through their eliminations earns placement. With one opponent left, waiting
+  only helps if it improves our chance to win.
+- **Free-for-all detection** (`ffa_score` in `bot.py`) counts drops in `alive` we didn't cause. A
+  zone or NPC death could fake it. Test ambiguous cases before leaning on it harder.
+- **Zone:** compare time left against travel time along a *walkable route*. A goal that looks
+  close may be behind a building. Check the final move command after dodge and unstick
+  overrides, since those can undo a safe zone decision.
+- **Resources:** judge loot, upgrades and fights against HP, energy, time to cover and the next
+  zone crossing. Untried idea: an upgrade order that depends on which weapons we hold.
+- **Experiments:** start from the best scored commit. Name one failure mode, one change, and
+  the result that would justify keeping it. Only a match result establishes a gain. The
+  recorded stream (`tools/replay.py`) only checks decisions and timing.
+- Locking a submission other than the best practice score needs a specific free-for-all
+  reason and an explicit account of the qualification risk.
+
+(Some of these notes are adapted from a review by ChatGPT.)
+
 ## Team workflow
 - `git pull` before starting, commit small, push often, and write clear commit messages.
 - One feature per commit, so a bad change can be reverted with `git revert` (never by
