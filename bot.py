@@ -20,7 +20,8 @@ from nav import Nav
 
 TAU = 2 * math.pi
 UPGRADE_PRIORITY = [
-    "armor", "plating", "nanites", "laser_damage", "lightning_efficiency", "gun_damage", "gun_rate",
+    # v17b: survival first for practice (we lose places by dying; HP and regen keep us alive between hunters)
+    "plating", "nanites", "armor", "laser_damage", "lightning_efficiency", "gun_damage", "gun_rate",
     "laser_charge", "gyros", "gun_mag", "lightning_range", "lightning_chain", "reactor", "capacitor",
     "servos", "sensors", "mortar_reload", "mortar_splash", "mortar_velocity", "jets", "gun_velocity", "laser_pierce",
 ]
