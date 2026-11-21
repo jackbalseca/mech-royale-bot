@@ -39,6 +39,9 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v35: never take a mortar in practice (giddygiddyboy's squad profile NoMortar; MIT, see CREDITS.md). With v28 we no
+# longer lob at hidden targets, the mortar barely hits strafing mechs (7-27 dps) and holding one takes +60% laser damage.
+V35_NOMORTAR = True
 
 
 def wrap(a):
@@ -885,6 +888,8 @@ class Bot:
         return best
 
     def loadout_gain(self, kinds, k):
+        if V35_NOMORTAR and k == "mortar" and self.ffa_score < 1:
+            return 0.0  # v35: never carry a mortar in practice (laser cook-off +60%; giddygiddyboy NoMortar, MIT)
         if None in kinds:
             return WEAPON_RANK.get(k, 0)
         # v24-keep-gun (from exp-agent-weapons 16c2fa3): never trade the gun away. Lightning reaches only 45 m and the
