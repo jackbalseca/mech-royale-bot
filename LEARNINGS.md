@@ -51,6 +51,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v31 `a9448ac` | v28 + farming between fights (cubes 105 m, crates/drones 150 m at >50% HP; giddygiddyboy chooseLoot) | 4.77 | -0.36 vs v28 | reject: **walking to farm costs us points even with the new combat core** (sim: kills up, survival 133 -> 111 s) |
 | v30 `db7b7a8` | v28 + fast unstick + grid cover search around corners (giddygiddyboy) | 4.98 | -0.15 vs v28 | reject: no gain (sim: cover search found a spot in 1% of retreats) |
 | v32 `e3a0da9` | v28 + opening recovery: withdraw 5.5 s if losing the trade in the first 60 s (Kanyaraasi) | 5.13 | 0.00 vs v28 | **repeated score**: identical to v28, so the trigger never fired in the 48 official matches (early fights start near full HP). No effect |
+| **v34 `927da08`** | **v28 + upgrade orders: plating, armor, laser_damage, laser_charge, nanites... (practice)** | **5.15** | +0.02 vs v28 | noise; **baseline** by the highest-score rule |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
