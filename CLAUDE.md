@@ -5,7 +5,7 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 
 **Also read `LEARNINGS.md`** (every official result and what it taught us) and follow the
 **`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
-Current best official build: **v10 `4c977b2` = 3.92** (branch `exp-v10-commit`).
+Current best official build: **v16 `3881e26` = 4.02** (branch `exp-v16-still`).
 
 ## What this is
 - Bot for the Builders Buildathon **Mech Royale** track. Protocol and rules: `protocol.md`.

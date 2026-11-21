@@ -25,10 +25,11 @@ Last updated: Sat Nov 21, 12:55 AM ET.
 | v7 `e887124` | long-range duelling, backpedal at 130/160 m | 3.04 | -0.77 | reject |
 | v8 `b53c940` | closer engagement (40/60 m) | 3.79 | -0.02 | no effect |
 | v3 re-roll `d5e7b76` | v3, RNG salt only | 3.75 | -0.06 | noise measurement |
-| **v10 `4c977b2`** | **commit to fights, finish kills (Wolverines' losing/finishing thresholds)** | **3.92** | +0.11 vs v3 | **keep: current best** |
+| v10 `4c977b2` | commit to fights, finish kills (Wolverines' losing/finishing thresholds) | 3.92 | +0.11 vs v3 | keep |
 | v12 `1c8f31a` | random strafe reversal every 0.35-1.05 s | 3.83 | -0.09 | reject |
 | v14 `c0a7d14` | active farming (walk to drones/crates, cubes to 120 m) | 3.69 | -0.23 | reject |
 | v15 `08fe076` | quiet: no optional gunfire | 3.85 | -0.07 vs v10 | no effect: **sound is not the cost** |
+| **v16 `3881e26`** | **stay put when idle (no drift to the zone hold point)** | **4.02** | +0.10 vs v10 | **keep: current best** (edge of noise, consistent with the exposure pattern) |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -71,7 +72,7 @@ Measured real house-bot gun accuracy (spectator feed, 5 live matches): experts 9
 
 ## Ideas not yet tested (rank by "reduces exposure")
 1. ~~v15 quiet~~: tested, no effect (3.85).
-2. **Stay put when idle** (next): v10 still walks toward a zone hold point and up to 160 m for weapons when idle.
+2. ~~Stay put when idle~~: tested as v16, 4.02 (+0.10). Was: v10 still walks toward a zone hold point and up to 160 m for weapons when idle.
    Holding near cover until the zone forces a move would cut exposure further.
 3. **Pick idle spots that are hard to see** (few long sightlines), not just the nearest cover.
 4. **Recovery that doesn't leak** (v5/v9 idea), but only combined with low-exposure idling.
