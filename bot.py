@@ -55,6 +55,9 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v38 (port audit finding 8): fight_move exposure counts every mech seen in the last 2.5 s (last known position, real
+# eye height), not just the 3 nearest in view right now (giddygiddyboy fightMove, MIT)
+V38_EXPOSURE = True
 
 
 def wrap(a):
@@ -785,8 +788,13 @@ class Bot:
         st = me.get("stats", {})
         mh = st.get("muzzle_height", 7.0)
         bh = st.get("height", 9.0) * 0.6
-        others = sorted((e for e in obs["mechs"] if e["kind"] == "mech" and e["id"] != m["id"]),
-                        key=lambda e: hdist(p2, e["pos"]))[:3]
+        if V38_EXPOSURE:
+            eh = self.cfg.get("mech", {}).get("eye_height", 8.0)
+            others = sorted(({"pos": [v[1][0], v[1][1], v[1][2] + eh - 8.0]} for k, v in self.enemy_seen.items()
+                             if k != m["id"] and t - v[0] < 2.5), key=lambda e: hdist(p2, e["pos"]))[:5]
+        else:
+            others = sorted((e for e in obs["mechs"] if e["kind"] == "mech" and e["id"] != m["id"]),
+                            key=lambda e: hdist(p2, e["pos"]))[:3]
         cubes = [cb for cb in obs.get("cubes", []) if hdist(p2, cb["pos"]) < 40 and abs(cb["pos"][2] - me["pos"][2]) < 4]
         cube = min(cubes, key=lambda cb: hdist(p2, cb["pos"])) if cubes else None
         c_now, r_now = self.zone_at(obs["zone"], t)
