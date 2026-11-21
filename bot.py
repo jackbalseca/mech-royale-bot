@@ -28,6 +28,9 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
+V25_LASERDODGE = True
+V25_LASERSEEK = True
+V25_NOMORTAR = True
 
 
 def wrap(a):
@@ -386,6 +389,21 @@ class Bot:
                 if me["energy"] > (55 if ki is not None and target is not None else 25):
                     boost = True
                 mode += "+bdodge"
+        # v25-laserdodge: the laser is hitscan, so sidestep while any visible mech charges at us (not just our target).
+        # Same blending/energy guard as the bullet dodge; never overrides zone, mortar dodge, unstick or a bullet dodge.
+        if V25_LASERDODGE and not mode.startswith(("zone", "dodge", "unstick")) and "+bdodge" not in mode and me["in_zone"]:
+            try:
+                ld = self.laser_dodge(enemies, p2, move)
+            except Exception:
+                ld = None
+            if ld is not None:
+                move = (move[0] * 0.3 + ld[0] * 0.95, move[1] * 0.3 + ld[1] * 0.95)
+                n = math.hypot(*move)
+                if n > 1:
+                    move = (move[0] / n, move[1] / n)
+                if me["energy"] > (55 if ki is not None and target is not None else 25):
+                    boost = True
+                mode += "+ldodge"
         # take a pickup if within reach
         take = self.want_take(obs, me, p2)
         if take:
@@ -464,6 +482,24 @@ class Bot:
         if u == (0.0, 0.0) or not self.world.walkable(p2[0] + u[0] * 4, p2[1] + u[1] * 4):
             return None  # don't sidestep into a wall
         return u
+
+    def laser_dodge(self, enemies, p2, move):
+        """v25-laserdodge: unit sidestep perpendicular to the nearest mech charging a laser within 0.15 rad of us, or None.
+        Side: the one along our current move (else our strafe side), flipped if it walks into a wall."""
+        ch = [m for m in enemies if m.get("charging")
+              and abs(wrap(m["aim"][0] - math.atan2(p2[1] - m["pos"][1], p2[0] - m["pos"][0]))) < 0.15]
+        if not ch:
+            return None
+        m = min(ch, key=lambda m: hdist(p2, m["pos"]))
+        to = unit((p2[0] - m["pos"][0], p2[1] - m["pos"][1]))
+        perp = (-to[1], to[0])
+        dot = perp[0] * move[0] + perp[1] * move[1]
+        if dot < 0 or (dot == 0 and self.strafe < 0):
+            perp = (-perp[0], -perp[1])
+        for u in (perp, (-perp[0], -perp[1])):
+            if self.world.walkable(p2[0] + u[0] * 4, p2[1] + u[1] * 4):
+                return u
+        return None
 
     def look_dir(self, me, t, p2, target):
         # someone shot us recently: face them (rear hits do x1.5)
@@ -668,25 +704,30 @@ class Bot:
             return None  # v24-heal: fetch a weapon only into an empty slot while healing (no swaps)
         best, bestv = None, 0.0
         cands = list(obs.get("pickups", []))
-        if None in kinds:  # v19: with an empty slot, also go to weapons we saw earlier
+        seek_laser = V25_LASERSEEK and "laser" not in kinds  # v25-laserseek (from exp-v21 01b365c): go much farther for our first laser
+        if None in kinds or seek_laser:  # v19: with an empty slot, also go to weapons we saw earlier
             vis = {pk["id"] for pk in cands}
-            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items() if i not in vis]
+            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items()
+                      if i not in vis and (None in kinds or v[0] == "laser")]
         for pk in cands:
             k = pk["kind"]
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
             d = hdist(p2, pk["pos"])
-            if d > (160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
+            first_laser = k == "laser" and seek_laser
+            if d > (240 if first_laser else 160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
                 continue
             gain = self.loadout_gain(kinds, k)
             if gain <= 0:
                 continue
-            v = gain * 100 - d
+            v = (300.0 if first_laser else gain * 100) - d
             if v > bestv:
                 best, bestv = pk, v
         return best
 
     def loadout_gain(self, kinds, k):
+        if V25_NOMORTAR and k == "mortar":  # v25-nomortar (from exp-v20 06f1c10): never carry a mortar (laser cook-off +60%; laser beats mortar)
+            return 0.0
         if None in kinds:
             return WEAPON_RANK.get(k, 0)
         # v24-keep-gun (from exp-agent-weapons 16c2fa3): never trade the gun away. Lightning reaches only 45 m and the
