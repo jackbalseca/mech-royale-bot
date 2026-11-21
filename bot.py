@@ -25,7 +25,7 @@ UPGRADE_PRIORITY = [
     "servos", "sensors", "mortar_reload", "mortar_splash", "mortar_velocity", "jets", "gun_velocity", "laser_pierce",
 ]
 WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
-V24_HEAL = True
+V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
 
