@@ -54,6 +54,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | **v34 `927da08`** | **v28 + upgrade orders: plating, armor, laser_damage, laser_charge, nanites... (practice)** | **5.15** | +0.02 vs v28 | noise; **baseline** by the highest-score rule |
 | v35b `a49150e` | v34 + never take a mortar (giddygiddyboy NoMortar) | 4.79 | -0.36 vs v34 | reject: **keep the mortar** (third loss for no-mortar, even with the v28 core) |
 | **v36 `fa73532`** | **v34 + fight when cornered (no open-ground fleeing) + Go's exact lose/finish rules (port audit)** | **5.27** | +0.12 vs v34 | **keep: current best / baseline**. Fixing port fidelity beats porting more features |
+| v37b `f89a472` | v36 + aim/fire fidelity fixes (port audit 2-4) | 5.27 | 0.00 vs v36 | **repeated score**, but the changes fire every fight: net zero (coincident total). Not kept (tie goes to the earlier build) |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
