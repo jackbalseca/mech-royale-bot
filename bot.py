@@ -55,6 +55,10 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v40 (port audit finding 7, after giddygiddyboy's zone "hold", MIT): remember the circle from before each shrink.
+# If the server's circle still equals it during the shrink, interpolate as before; if the server is already sending
+# the live (shrinking) circle, use it directly instead of shrinking it a second time.
+V40_ZONEHOLD = True
 
 
 def wrap(a):
@@ -130,6 +134,25 @@ class Bot:
         c0, r0 = z["center"], z["radius"]
         c1, r1 = z["next_center"], z["next_radius"]
         s0, s1 = z["shrink_start"], z["shrink_end"]
+        if V40_ZONEHOLD:
+            key = (round(s0, 2), round(r1, 2))
+            holds = getattr(self, "zone_holds", None)
+            if holds is None:
+                holds = self.zone_holds = {}
+            now = getattr(self, "now_t", t)
+            if now <= s0 and key not in holds:
+                holds[key] = (list(c0), r0)
+            h = holds.get(key)
+            if now > s0 and h is not None and r0 < h[1] - 0.5:
+                # the server sends the live circle: interpolate from it over the rest of the shrink
+                if t >= s1 or s1 <= now:
+                    return c1, r1
+                if t <= now:
+                    return c0, r0
+                f = (t - now) / (s1 - now)
+                return [c0[0] + (c1[0] - c0[0]) * f, c0[1] + (c1[1] - c0[1]) * f], r0 + (r1 - r0) * f
+            if h is not None:
+                c0, r0 = h
         if t <= s0:
             return c0, r0
         if t >= s1 or s1 <= s0:
@@ -177,6 +200,7 @@ class Bot:
     def act(self, obs):
         me = obs["self"]
         t = obs["t"]
+        self.now_t = t  # v40: zone_at needs the current time for look-ahead queries
         pos = me["pos"]
         p2 = (pos[0], pos[1])
         act = {"tick": obs["tick"]}
