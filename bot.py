@@ -51,6 +51,10 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v36 (audit of the v28 port vs giddygiddyboy e19e3c8, MIT): Go's lose rule counts only mechs in view now (<160 m),
+# finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
+# ("cornered") instead of fleeing across open ground.
+V36_CORNER = True
 
 
 def wrap(a):
@@ -640,7 +644,9 @@ class Bot:
             # (Thresholds adapted from the Wolverines/TTUN bot, MIT License; see CREDITS.md.)
             enemy_frac = enemy_hp / max(m.get("max_hp", 1400), 1)
             threats3 = sum(1 for v in self.enemy_seen.values() if t - v[0] < 3.0 and hdist(p2, v[1]) < 160)
-            finishing = enemy_frac < 0.2 and hp_frac > 0.2 and threats3 <= 2
+            if V36_CORNER:
+                threats3 = sum(1 for e in obs["mechs"] if e["kind"] == "mech" and hdist(p2, e["pos"]) < 160)
+            finishing = enemy_frac < (0.25 if V36_CORNER else 0.2) and hp_frac > 0.2 and threats3 <= 2
             losing = not finishing and ((hp_frac < 0.35 and enemy_frac > hp_frac + 0.1)
                                         or (threats3 >= 2 and hp_frac < 0.55) or (threats3 >= 3 and hp_frac < 0.8))
             if losing:
@@ -652,13 +658,21 @@ class Bot:
                 self.recovering = False
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if self.recovering and not zone_danger:
+            no_retreat = False
+            if V36_CORNER:
+                go_fin = hdist(p2, m["pos"]) < 120 and (enemy_hp < 200 or enemy_hp < me["hp"] * 0.5)
+                late = r_next <= 70 or obs["alive"] <= 3
+                no_retreat = go_fin or late
+            if self.recovering and not zone_danger and not no_retreat:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
                     if hdist(p2, cov) < 2.5:
                         return "cover", cov, (0.0, 0.0), False, False
                     mv, wp = self.nav_move(p2, cov, onroof)
                     return "to-cover", wp, mv, hdist(p2, cov) > 6, False
+                if V36_CORNER and vis and not onroof and self.ffa_score < 1:
+                    mvf, _ = self.fight_move(obs, me, p2, m, c, d, 1.0, hp_frac, 9, t, c_next, r_next)
+                    return "cornered", None, mvf, False, False
                 away = (p2[0] - to[0] * 60, p2[1] - to[1] * 60)
                 if hdist(away, c_soon) > r_soon * 0.85:  # don't flee into the storm
                     u = unit((away[0] - c_soon[0], away[1] - c_soon[1]))
