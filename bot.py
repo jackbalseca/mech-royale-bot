@@ -75,6 +75,7 @@ class Bot:
         self.bad_pickups = {}
         self.prev_move = (0.0, 0.0)
         self.recovering = False
+        self.npc_mem = {}  # npc id -> (last seen t, pos, est hp)
         self.hostile = {}  # mech id -> last time it shot at / aimed at us
         self.cover = None
         self.cover_t = -99.0
@@ -166,6 +167,13 @@ class Bot:
 
         enemies = [m for m in obs["mechs"] if m["kind"] == "mech"]
         npcs = [m for m in obs["mechs"] if m["kind"] == "npc"]
+        for n in npcs:
+            self.npc_mem[n["id"]] = (t, n["pos"], n.get("hp", 350))
+        for e in obs.get("events", []):
+            if e["type"] == "hit" and 100 <= (e.get("target") or 0) < 1000 and e["target"] in self.npc_mem:
+                tt, pp, hh = self.npc_mem[e["target"]]
+                self.npc_mem[e["target"]] = (tt, pp, hh - e["amount"])
+        self.npc_mem = {k: v for k, v in self.npc_mem.items() if t - v[0] < 25 and v[2] > 0}
         for m in enemies:
             self.enemy_seen[m["id"]] = (t, m["pos"], m["vel"], m.get("hp", 1400), m.get("weapons", []))
             # aiming at us (or charging a laser at us) counts as hostile
@@ -492,11 +500,30 @@ class Bot:
         if pk is not None:
             mv, wp = self.nav_move(p2, pk["pos"], onroof)
             return "loot", wp, mv, False, False
-        cubes = [c for c in obs.get("cubes", []) if hdist(p2, c["pos"]) < 70 and hdist(c["pos"], c_soon) < r_soon - 10]
+        cubes = [c for c in obs.get("cubes", []) if hdist(p2, c["pos"]) < 120 and hdist(c["pos"], c_soon) < r_soon - 10]
         if cubes:
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
             return "cube", wp, mv, False, False
+        # 3b. v14 active farming: walk into gun range of remembered NPC drones (2 cubes each) and of crates (1 cube,
+        #     50% weapon). Thresholds adapted from the Wolverines/TTUN bot (MIT License; see CREDITS.md).
+        if side is None and not self.recovering:
+            farm = None
+            if hp_frac > 0.5:
+                for nid, (tt, np_, hh) in self.npc_mem.items():
+                    dd = hdist(p2, np_)
+                    if dd < 170 and hdist(np_, c_soon) < r_soon - 10 and (farm is None or dd - 20 < farm[0]):
+                        farm = (dd - 20, np_, 38.0, "farm-npc")
+            if hp_frac > 0.45:
+                for cr in obs.get("crates", []):
+                    if abs(cr["pos"][2] - self.world.ground_at(cr["pos"][0], cr["pos"][1])) > 2:
+                        continue  # roof crates: skip
+                    dd = hdist(p2, cr["pos"])
+                    if dd < 150 and hdist(cr["pos"], c_soon) < r_soon - 10 and (farm is None or dd + 5 < farm[0]):
+                        farm = (dd + 5, cr["pos"], 30.0, "farm-crate")
+            if farm is not None and hdist(p2, farm[1]) > farm[2]:
+                mv, wp = self.nav_move(p2, farm[1], onroof)
+                return farm[3], wp, mv, False, False
         # 4. shooting an NPC or crate: hold still-ish and keep some distance from NPCs
         if side is not None:
             m, c, d, _ = side

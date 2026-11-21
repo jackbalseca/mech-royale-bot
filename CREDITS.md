@@ -12,3 +12,5 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
 - `bot.py` v10+ fight-commitment thresholds ("losing" / "finishing" rules for when to break off a fight) are
   adapted from the Wolverines team's bot, [varchaskukreja/TTUN](https://github.com/varchaskukreja/TTUN)
   `mech-royale/bot/bot.ts` (MIT License, Copyright (c) 2026 TTUN). Rewritten in Python for our code; no file copied.
+- `bot.py` v14+ active farming (walk into range of remembered NPC drones and nearby crates; HP and distance
+  thresholds) is adapted from the same Wolverines/TTUN bot (MIT License). Rewritten in Python; no file copied.
