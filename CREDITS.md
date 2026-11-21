@@ -29,3 +29,9 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v31 (`V31_FARM`: `choose_loot` picks cubes within 105 m (value 75), crates within 150 m (45) and drones seen in
+  the last 12 s within 150 m (85) by value / (distance + 18), crates and drones only above 50% HP with no danger, with
+  a 30 s give-up; drones are fought at a 58 m standoff with `fight_move`, crates from up to 50 m) is adapted from
+  `chooseLoot` and the loot branch of `step` in `mech/brain.go` at commit e19e3c8 of
+  [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
+  Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.

@@ -39,6 +39,10 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v31: giddygiddyboy's practice loot chooser (MIT; see CREDITS.md): when not fighting, go for the best of
+# cubes (105 m, value 75), crates (150 m, 45) and drones (150 m, 85, seen in the last 12 s) by value / (distance + 18);
+# crates and drones only at > 50% HP with no danger; give up on a target after 30 s.
+V31_FARM = True
 
 
 def wrap(a):
@@ -100,6 +104,10 @@ class Bot:
         self.cover_t = -99.0
         self.heal = False  # v24-heal: hurt with no mech target -> don't deal damage, don't roam, regen
         self.npc_dmg = {}  # v24-heal: npc id -> last time it damaged us
+        self.npc_mem = {}  # v31: npc id -> (npc dict, last seen)
+        self.loot_id = None  # v31: current loot target key
+        self.loot_since = 0.0
+        self.bad_loot = {}  # v31: key -> time until which we skip it
         self.bd_hold = None  # v26-dodgehold: (until_t, sidestep dir) of the current bullet sidestep
         # warm up lazy imports / caches so the first real decision isn't slow
         try:
@@ -687,8 +695,28 @@ class Bot:
         if pk is not None:
             mv, wp = self.nav_move(p2, pk["pos"], onroof)
             return "loot", wp, mv, False, False
+        if V31_FARM and not self.heal and not onroof:
+            lc = self.choose_loot(obs, me, p2, hp_frac, t)
+            if lc is not None:
+                kind, key, lpos, ref = lc
+                dl = hdist(p2, lpos)
+                if kind == "npc":
+                    nc = self.center_of(ref)
+                    if any(n["id"] == ref["id"] for n in [n for n in obs["mechs"] if n["kind"] == "npc"]) and dl < 75 and self.world.los(
+                            [pos[0], pos[1], pos[2] + me["stats"].get("muzzle_height", 7.0)], nc):
+                        mvf, _ = self.fight_move(obs, me, p2, ref, nc, math.dist(pos, nc), 1.0, hp_frac, 0, t,
+                                                 c_next, r_next, rp_force=58.0)
+                        return "farm-npc", None, mvf, False, False
+                elif kind == "crate":
+                    cc = [lpos[0], lpos[1], lpos[2] + 1.2]
+                    if dl < 50 and self.world.los([pos[0], pos[1], pos[2] + me["stats"].get("muzzle_height", 7.0)], cc):
+                        if dl < 12:
+                            return "farm-crate", None, unit((p2[0] - lpos[0], p2[1] - lpos[1])), False, False
+                        return "farm-crate", None, (0.0, 0.0), False, False
+                mv, wp = self.nav_move(p2, lpos, onroof)
+                return "farm-" + kind, wp, mv, False, False
         cubes = [c for c in obs.get("cubes", []) if hdist(p2, c["pos"]) < 70 and hdist(c["pos"], c_soon) < r_soon - 10]
-        if cubes and not self.heal:  # v24-heal: no cube walks while healing
+        if cubes and not self.heal and not V31_FARM:  # v24-heal: no cube walks while healing
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
             return "cube", wp, mv, False, False
@@ -722,7 +750,52 @@ class Bot:
             return ("heal-cover" if cov is not None else "heal"), None, (0.0, 0.0), False, False
         return "idle", None, (0.0, 0.0), False, False
 
-    def fight_move(self, obs, me, p2, m, c, d, enemy_frac, hp_frac, crowd, t, c_next, r_next):
+    def choose_loot(self, obs, me, p2, hp_frac, t):
+        """v31: giddygiddyboy's practice chooseLoot (MIT; see CREDITS.md), minus weapons (ours handles those)."""
+        for n in [n for n in obs["mechs"] if n["kind"] == "npc"]:
+            self.npc_mem[n["id"]] = (n, t)
+        for k in [k for k, v in self.npc_mem.items() if t - v[1] > 12.0]:
+            del self.npc_mem[k]
+        z = obs["zone"]
+        c_now, r_now = self.zone_at(z, t)
+        walk = me["stats"].get("walk_speed", 11.7) or 11.7
+        danger = (any(t - v < 4.0 for v in self.hit_me.values())
+                  or any(t - v[0] < 1.0 and hdist(p2, v[1]) < 150 for v in self.enemy_seen.values()))
+        best, bu = None, 0.0
+        for kind, key, lpos, val, ref, lim in self._loot_items(obs, hp_frac, danger):
+            if self.bad_loot.get(key, -99.0) > t:
+                continue
+            d = hdist(p2, lpos)
+            if d > lim or hdist(lpos, c_now) > r_now - 6:
+                continue
+            if hdist(lpos, z["next_center"]) > z["next_radius"] - 6 and t + d * 1.4 / walk + 5 > z["shrink_start"]:
+                continue  # the zone would close on it before we're done
+            if lpos[2] - self.world.ground_at(lpos[0], lpos[1]) > 3.2 or not self.world.walkable(lpos[0], lpos[1]):
+                continue
+            u = val / (d + 18.0) * (1.35 if key == self.loot_id else 1.0)
+            if u > bu:
+                best, bu = (kind, key, lpos, ref), u
+        if best is None:
+            self.loot_id = None
+            return None
+        if best[1] != self.loot_id:
+            self.loot_id, self.loot_since = best[1], t
+        elif t - self.loot_since > 30.0:
+            self.bad_loot[best[1]] = t + 60.0
+            self.loot_id = None
+            return None
+        return best
+
+    def _loot_items(self, obs, hp_frac, danger):
+        for cb in obs.get("cubes", []):
+            yield "cube", ("c", cb["id"]), cb["pos"], 75.0, cb, 105.0
+        if hp_frac > 0.5 and not danger:
+            for cr in obs.get("crates", []):
+                yield "crate", ("k", cr["id"]), cr["pos"], 45.0, cr, 150.0
+            for n, _seen in self.npc_mem.values():
+                yield "npc", ("n", n["id"]), n["pos"], 85.0, n, 150.0
+
+    def fight_move(self, obs, me, p2, m, c, d, enemy_frac, hp_frac, crowd, t, c_next, r_next, rp_force=None):
         """v28: giddygiddyboy's fightMove (MIT; see CREDITS.md), rewritten: score standing still and 16 spots at 6 m
         by distance to our preferred range, line of sight to the target (wanted only when we can shoot), exposure to
         other mechs, the zone, a nearby cube and a strafe bias. Returns (move vector, boost)."""
@@ -738,6 +811,8 @@ class Bot:
             rp = 85.0
         if enemy_frac < 0.38 and hp_frac > 0.42 and crowd <= 2:
             rp = 20.0  # finish a weak target
+        if rp_force is not None:
+            rp = rp_force
         if light is None:  # never close inside a lightning arc or a mortar's minimum range
             tw = m.get("weapons") or []
             if "lightning" in tw:
