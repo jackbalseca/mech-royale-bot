@@ -514,10 +514,9 @@ class Bot:
                         return "capture", None, (0.0, 0.0), False, False
                     mv, wp = self.nav_move(p2, dr["pos"], onroof)
                     return "drop", wp, mv, dd > 60, False
-        # 6. drift toward the hold point
-        if hdist(p2, hold) > 12:
-            mv, wp = self.nav_move(p2, hold, onroof)
-            return "hold", wp, (mv[0] * 0.8, mv[1] * 0.8), False, False
+        # 6. v16: stay put when idle. Walking across the map toward a hold point exposes us to the squad, which
+        #    shares every sighting (LEARNINGS.md: movement/visibility, not sound, is what costs points).
+        #    Zone pressure is handled first in choose_move (it looks 10 s ahead), so we only move when we must.
         return "idle", None, (0.0, 0.0), False, False
 
     def t_seen(self, e, t):
