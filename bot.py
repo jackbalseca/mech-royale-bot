@@ -29,6 +29,10 @@ V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
 V26_DODGEHOLD = True
+# v27: ported from giddygiddyboy's practice mode (MIT License; see CREDITS.md)
+V27_FOCUS = True   # target score d + 0.18*HP, -300 if HP <= 30%, -200 to stay on our target (2 s), -40 if it hit us (4 s)
+V27_FINISH = True  # close to 20 m on a target under 38% HP when we're above 42% and face <= 2 threats
+V27_LETHAL = True  # release a partial laser charge early when it already kills (dmg * 0.7 >= target HP)
 
 
 def wrap(a):
@@ -63,6 +67,7 @@ class Bot:
         self.reach = cfg["loot"]["pickup_radius"]
         # state
         self.target_id = None
+        self.stick = (None, -99.0)  # v27: (target id, time chosen)
         self.strafe = 1.0
         self.strafe_until = 0.0
         self.last_pos = None
@@ -242,12 +247,24 @@ class Bot:
             if not ffa and not hostile and not d < 25:
                 continue  # leave passive mechs alone: shooting them only brings more enemies
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
-            score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
-            if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60
+            if V27_FOCUS:
+                hp_m = m.get("hp", 1400)
+                score = d + 0.18 * hp_m + (0 if vis else 150)
+                if hp_m <= 0.3 * m.get("max_hp", 1400):
+                    score -= 300
+                if m["id"] == self.stick[0] and t - self.stick[1] < 2.0:
+                    score -= 200
+                if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 4:
+                    score -= 40
+            else:
+                score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
+                if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
+                    score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
+        if target is not None:
+            self.stick = (target[0]["id"], t)
         # v24-heal: dealing damage resets the 5 s regen timer, so while hurt with no mech to fight, stop farming
         self.heal = V24_HEAL and target is None and hp_frac < 0.90 and obs["alive"] > 2 and not zone_danger
 
@@ -316,7 +333,18 @@ class Bot:
                 ch = laser.get("charge", 0)
                 full = laser["stats"].get("charge", 0.75)
                 on = self.aim_err_ok(me, direct_yaw, direct_pitch, d, rad, hgt)
-                if ch > 0:
+                ls = laser["stats"]
+                lethal = False
+                if V27_LETHAL and is_mech and ls.get("min_charge", 0.15) <= ch < full - 0.051:
+                    cc = self.cfg.get("cubes", {})
+                    dmg = ls.get("damage", 315) * (ls.get("min_frac", 0.35) + (1 - ls.get("min_frac", 0.35)) * ch / max(full, 1e-6))
+                    dmg *= 1 + cc.get("damage_per_cube", 0.0) * min(me.get("cubes", 0), cc.get("stat_cap", 10))
+                    if "mortar" in (m.get("weapons") or []):
+                        dmg *= 1 + ls.get("cookoff", 0.0)
+                    lethal = dmg * 0.7 >= m.get("hp", 1400) and on
+                if lethal:
+                    fire[li] = False  # let go now: this partial charge already kills
+                elif ch > 0:
                     fire[li] = not (ch >= full * 0.97 and on)
                 elif laser.get("cooldown", 0) <= 0.05 and (is_mech or m.get("kind") == "npc"):
                     fire[li] = True
@@ -566,6 +594,8 @@ class Bot:
                 want = 85.0
             else:
                 want = 60.0
+            if V27_FINISH and enemy_frac < 0.38 and hp_frac > 0.42 and threats3 <= 2:
+                want = 20.0  # v27: close in to finish a weak target (giddygiddyboy, MIT)
             if not vis:
                 if self.recovering:
                     return "lurk", None, (0.0, 0.0), False, False
