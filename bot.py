@@ -557,8 +557,10 @@ class Bot:
         p = self.last_pos
         to = unit((c[0] - p[0], c[1] - p[1]))
         if t > self.strafe_until:
-            self.strafe = -self.strafe
-            self.strafe_until = t + self.rng.uniform(0.8, 2.2)
+            # v12: reverse often and unpredictably so leading shooters (the house bots lead their targets) miss.
+            # Timing adapted from the Wolverines/TTUN bot (MIT License; see CREDITS.md).
+            self.strafe = -1.0 if self.rng.random() < 0.5 else 1.0
+            self.strafe_until = t + 0.35 + self.rng.random() * 0.7
         perp = (-to[1] * self.strafe, to[0] * self.strafe)
         # if the enemy laser is charging at us, dodge hard
         if m.get("charging"):
