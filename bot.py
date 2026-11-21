@@ -59,6 +59,10 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v45 (our own idea): lead the mortar. Shells fly 1-3 s, so unled shots miss moving mechs (weapons audit: ~70 dps on a
+# still target, 7-27 dps on a strafing one). Lead by a smoothed velocity (EMA ~0.5 s, so strafing jitter averages out)
+# times the shell's flight time, iterated three times.
+V45_MORTARLEAD = True
 
 
 def wrap(a):
@@ -96,6 +100,7 @@ class Bot:
         self.stick = (None, -99.0)  # v27: (target id, time chosen)
         self.hit_me = {}  # v28: mech id -> last time it damaged us
         self.lose_t = -99.0  # v28: last tick we were losing a fight
+        self.vel_ema = {}  # v45: mech id -> smoothed velocity
         self.fstrafe = 1.0
         self.fstrafe_until = 0.0
         self.strafe = 1.0
@@ -232,6 +237,11 @@ class Bot:
         npcs = [m for m in obs["mechs"] if m["kind"] == "npc"]
         for m in enemies:
             self.enemy_seen[m["id"]] = (t, m["pos"], m["vel"], m.get("hp", 1400), m.get("weapons", []))
+            if V45_MORTARLEAD:
+                ve = self.vel_ema.get(m["id"])
+                mv0 = m.get("vel") or [0, 0, 0]
+                self.vel_ema[m["id"]] = (list(mv0) if ve is None else
+                                         [ve[0] * 0.8 + mv0[0] * 0.2, ve[1] * 0.8 + mv0[1] * 0.2, 0.0])
             # aiming at us (or charging a laser at us) counts as hostile
             to_me = math.atan2(pos[1] - m["pos"][1], pos[0] - m["pos"][0])
             d_me = hdist(p2, m["pos"])
@@ -441,10 +451,15 @@ class Bot:
                     fire[ki] = True
             # mortar at mechs 30-220 m
             if mortar is not None and is_mech and 30 < d < 220 and mortar.get("cooldown", 0) <= 0:
-                sol = self.mortar_pitch(pos, c, mortar["stats"])
+                myaw = direct_yaw
+                if V45_MORTARLEAD and is_mech:
+                    q, sol = self.mortar_lead(pos, c, self.vel_ema.get(m["id"], [0, 0, 0]), mortar["stats"])
+                    myaw = yaw_to(muzzle, q)
+                else:
+                    sol = self.mortar_pitch(pos, c, mortar["stats"])
                 if sol is not None and not (light_in or laser_ready):
-                    aim = [direct_yaw, sol]
-                    if abs(wrap(me["aim"][0] - direct_yaw)) < 0.03 and abs(me["aim"][1] - sol) < 0.03:
+                    aim = [myaw, sol]
+                    if abs(wrap(me["aim"][0] - myaw)) < 0.03 and abs(me["aim"][1] - sol) < 0.03:
                         fire[mi] = True
         elif target is not None and mortar is not None and mortar.get("cooldown", 0) <= 0:
             # lob over cover at a mech we know about but can't see
@@ -527,6 +542,19 @@ class Bot:
         return act
 
     # ------------------------------------------------------------------ pieces
+    def mortar_lead(self, pos, c, vel, st, high=False):
+        """v45: aim point and pitch for a mortar shell that meets a target moving at `vel` (horizontal lead only)."""
+        q = list(c)
+        th = None
+        for _ in range(3):
+            th = self.mortar_pitch(pos, q, st, high)
+            if th is None:
+                return c, self.mortar_pitch(pos, c, st, high)
+            d = max(math.hypot(q[0] - pos[0], q[1] - pos[1]) - 3.0, 1.0)
+            tf = d / max(st["speed"] * math.cos(th), 1e-3)
+            q = [c[0] + vel[0] * tf, c[1] + vel[1] * tf, c[2]]
+        return q, th
+
     def mortar_pitch(self, pos, c, st, high=False):
         v, g = st["speed"], st["gravity"]
         ox, oy, oz = pos[0], pos[1], pos[2] + 9.5
