@@ -5,7 +5,7 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 
 **Also read `LEARNINGS.md`** (every official result and what it taught us) and follow the
 **`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
-Current best official build: **v36 `fa73532471ddb663885d092a3c9584ccf806bed3` = 5.27** (branch `exp-v36-cornered`).
+Current best official build: **v41 `50579e7c1ed2429303a50f43a4037a267836b50e` = 5.31** (branch `exp-v41-opening`).
 
 **Baseline rule (team rule, Sat 1:54 AM):** the **highest official score is always the baseline**. Every new
 experiment branches from that commit and is judged against it, never against an older or lower build. When a

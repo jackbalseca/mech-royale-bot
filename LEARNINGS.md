@@ -58,6 +58,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v38 `c24913e` | v36 + fight_move exposure counts mechs seen in the last 2.5 s (port audit 8) | 5.17 | -0.10 vs v36 | no gain, rejected |
 | v39 `fba06b4` | v36 + stay when already hidden + keep hiding after losing (port audit, coverMove) | 5.21 | -0.06 vs v36 | no effect |
 | v40 `5444c5d` | v36 + zone hold: use the live circle during shrinks instead of shrinking it twice (port audit 7) | 5.13 | -0.14 vs v36 | reject. Behaviour changed (server sends the live circle), but our old, more cautious zone estimate scored better |
+| **v41 `50579e7`** | **v36 + cautious engage rules for the first 20 s (Go's default profile)** | **5.31** | +0.04 vs v36 | noise; **baseline** by the highest-score rule |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
