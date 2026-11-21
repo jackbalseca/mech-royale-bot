@@ -216,9 +216,7 @@ class Bot:
             vis = self.world.los(muzzle, c) or self.world.los(muzzle, [c[0], c[1], m["pos"][2] + 8.5])
             score = d + m.get("hp", 1400) * 0.04 + (0 if vis else 150) + (-40 if m["id"] == self.target_id else 0)
             if self.last_dmg and self.last_dmg[2] == m["id"] and t - self.last_dmg[0] < 3:
-                score -= 60 if vis else 20
-                if t - self.last_dmg[0] < 1.0 and vis:
-                    score -= 120  # it's shooting us right now: face it
+                score -= 60
             if score < best:
                 best, target = score, (m, c, d, vis)
         self.target_id = target[0]["id"] if target else None
@@ -226,7 +224,8 @@ class Bot:
         # secondary targets: NPCs then crates (only when no mech is around)
         side = None
         recent_enemy = any(t - v[0] < 4.0 and hdist(p2, v[1]) < 160 for v in self.enemy_seen.values())
-        if target is None:
+        recovering_now = self.recovering and hp_frac < 0.85
+        if target is None and not recovering_now:
             for n in sorted(npcs, key=lambda n: hdist(p2, n["pos"])):
                 c = self.center_of(n)
                 d = math.dist(muzzle, c)
@@ -444,12 +443,10 @@ class Bot:
                        and self.t_seen(e, t)]
             n_close = sum(1 for e in threats if hdist(p2, e["pos"]) < 120)
             # recovering: break line of sight, regen, then come back
-            if (hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7)) and obs["alive"] > 2:
+            if hp_frac < 0.45 or (n_close >= 2 and hp_frac < 0.7):
                 self.recovering = True
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
-            if obs["alive"] <= 2:
-                self.recovering = False  # last opponent: retreating only gives them free shots
             if self.recovering and not zone_danger:
                 cov = self.find_cover(p2, threats or [m], t, c_soon, r_soon)
                 if cov is not None:
@@ -482,6 +479,13 @@ class Bot:
                 return "space", None, self.strafed((-to[0], -to[1]), target, t, 0.6), False, False
             return "strafe", None, self.strafed((0.0, 0.0), target, t, 1.0), False, False
         self.recovering = self.recovering and hp_frac < 0.85
+        if self.recovering:
+            # Target dropped out of view mid-recovery: keep healing instead of looting, drifting or shooting.
+            # Regen needs regen_delay s without dealing/taking damage; zone danger was already handled above.
+            if self.cover is not None and hdist(p2, self.cover) > 2.5 and self.world.walkable(*self.cover):
+                mv, wp = self.nav_move(p2, self.cover, onroof)
+                return "to-cover", wp, mv, False, False
+            return "heal", None, (0.0, 0.0), False, False
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:
