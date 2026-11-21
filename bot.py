@@ -591,20 +591,23 @@ class Bot:
         kinds = self.slots(me)
         best, bestv = None, 0.0
         cands = list(obs.get("pickups", []))
-        if None in kinds:  # v19: with an empty slot, also go to weapons we saw earlier
+        seek_laser = "laser" not in kinds  # v21: lasers decide fights; go much farther for our first one
+        if None in kinds or seek_laser:  # v19: also go to weapons we saw earlier
             vis = {pk["id"] for pk in cands}
-            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items() if i not in vis]
+            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items()
+                      if i not in vis and (None in kinds or v[0] == "laser")]
         for pk in cands:
             k = pk["kind"]
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
             d = hdist(p2, pk["pos"])
-            if d > (160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
+            first_laser = k == "laser" and seek_laser
+            if d > (240 if first_laser else 160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
                 continue
             gain = self.loadout_gain(kinds, k)
             if gain <= 0:
                 continue
-            v = gain * 100 - d
+            v = (300.0 if first_laser else gain * 100) - d
             if v > bestv:
                 best, bestv = pk, v
         return best
