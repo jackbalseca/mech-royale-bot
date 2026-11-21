@@ -29,3 +29,8 @@ All bot code in this repo (`bot.py`, `world.py`, `nav.py`, `build_cache.py`) is 
   `fightMove`, `prefRange`, `lead`, `squadParams` at commit e19e3c8) in
   [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
   Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.
+- `bot.py` v29 (`V29_LASERMECH` laser charged only at mechs, `V29_SIDE` drone/crate fire only at >= 50% HP and not
+  retreating plus return fire at the drone hitting us, `V29_RELOAD` reload at <= 60% ammo or after 3 s without
+  threats) is adapted from `step` in `mech/brain.go` at commit e19e3c8 of
+  [justnau/giddygiddyboy-mech-royale](https://github.com/justnau/giddygiddyboy-mech-royale) (MIT License,
+  Copyright (c) 2026 giddygiddyboy). Rewritten in Python from Go; no file copied.

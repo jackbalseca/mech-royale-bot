@@ -39,6 +39,10 @@ V28_FIGHT = True    # fight positioning: score 16 spots at 6 m + standing still 
 V28_AIM = True      # 75 ms latency lead, own-velocity muzzle shift, fire when the aim is on target within 50 ms
 V28_RETREAT = True  # retreat only while losing + 1.5 s (not until 85% HP)
 LAT = 0.075
+# v29: the rest of giddygiddyboy's practice decision path (MIT License; see CREDITS.md)
+V29_LASERMECH = True  # charge the laser only at mechs (never at drones/crates: half speed + 1.65 s cooldown)
+V29_SIDE = True       # shoot drones/crates only at >= 50% HP and not retreating, except return fire at a drone hitting us
+V29_RELOAD = True     # with nothing to shoot, reload at <= 60% ammo or after 3 s without threats
 
 
 def wrap(a):
@@ -76,6 +80,7 @@ class Bot:
         self.stick = (None, -99.0)  # v27: (target id, time chosen)
         self.hit_me = {}  # v28: mech id -> last time it damaged us
         self.lose_t = -99.0  # v28: last tick we were losing a fight
+        self.npc_hurt = (-99.0, 0.0)  # v29: (time, bearing) of the last drone hit on us
         self.fstrafe = 1.0
         self.fstrafe_until = 0.0
         self.strafe = 1.0
@@ -215,6 +220,8 @@ class Bot:
             if d_me < 220 and abs(wrap(m["aim"][0] - to_me)) < (0.25 if m.get("charging") else 0.12):
                 self.hostile[m["id"]] = t
         for e in obs.get("events", []):
+            if e["type"] == "damaged" and e.get("weapon") == "npc" and e.get("bearing") is not None:
+                self.npc_hurt = (t, e["bearing"])  # v29: drone fire, for return fire
             if e["type"] == "damaged" and e.get("by") is not None and e["by"] < 100:
                 self.hostile[e["by"]] = t
                 self.hit_me[e["by"]] = t
@@ -312,7 +319,22 @@ class Bot:
         # secondary targets: NPCs then crates (only when no mech is around)
         side = None
         recent_enemy = any(t - v[0] < 4.0 and hdist(p2, v[1]) < 160 for v in self.enemy_seen.values())
-        if target is None:
+        defend = None
+        if V29_SIDE and target is None and t - self.npc_hurt[0] < 3.0:
+            # v29: return fire at the drone that is hitting us (giddygiddyboy npcHurt "defend", MIT)
+            best_off = 0.7
+            for n in npcs:
+                c = self.center_of(n)
+                d = math.dist(muzzle, c)
+                if d > 150 or not self.world.los(muzzle, c):
+                    continue
+                off = 0.0 if t - self.npc_dmg.get(n["id"], -99) < 3.0 else \
+                    abs(wrap(math.atan2(n["pos"][1] - pos[1], n["pos"][0] - pos[0]) - self.npc_hurt[1]))
+                if off < best_off:
+                    best_off, defend = off, (n, c, d, True)
+        if defend is not None:
+            side = defend
+        elif target is None and (not V29_SIDE or (hp_frac >= 0.5 and not self.recovering)):
             for n in sorted(npcs, key=lambda n: hdist(p2, n["pos"])):
                 if self.heal and t - self.npc_dmg.get(n["id"], -99) >= 2.0:
                     continue  # v24-heal: only shoot back at an NPC that hit us in the last 2 s
@@ -406,7 +428,7 @@ class Bot:
                     fire[li] = False  # let go now: this partial charge already kills
                 elif ch > 0:
                     fire[li] = not (ch >= full * 0.97 and on)
-                elif laser.get("cooldown", 0) <= 0.05 and (is_mech or m.get("kind") == "npc"):
+                elif laser.get("cooldown", 0) <= 0.05 and (is_mech or (not V29_LASERMECH and m.get("kind") == "npc")):
                     fire[li] = True
             # lightning: instant, nearest in cone
             if light is not None and d < light["stats"]["range"] * 0.97 and me["energy"] >= light["stats"].get("energy", 3) + 2:
@@ -430,7 +452,13 @@ class Bot:
                         fire[mi] = True
         if aim is None:
             aim = self.look_dir(me, t, p2, target)
-        if target is None and gun and gun.get("ammo", 0) < gun["stats"]["mag"] * 0.5 and gun.get("reload", 0) == 0 and not recent_enemy:
+        if V29_RELOAD:  # v29: giddygiddyboy's reload rule (MIT)
+            quiet = (not any(t - v[0] < 3.0 for v in self.enemy_seen.values())
+                     and t - (self.last_dmg[0] if self.last_dmg else -99.0) > 3.0)
+            if (target is None and side is None and gun and gun.get("reload", 0) == 0
+                    and gun.get("ammo", 0) < gun["stats"]["mag"] and (gun.get("ammo", 0) <= 0.6 * gun["stats"]["mag"] or quiet)):
+                act["reload"] = True
+        elif target is None and gun and gun.get("ammo", 0) < gun["stats"]["mag"] * 0.5 and gun.get("reload", 0) == 0 and not recent_enemy:
             act["reload"] = True
         # a held laser charge with nothing to shoot: keep holding (it auto-fires after hold_s)
         if laser is not None and laser.get("charge", 0) > 0 and not shoot:
