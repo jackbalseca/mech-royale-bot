@@ -46,6 +46,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v26d `25b327e` | supply-drop capture | 4.40 | -0.10 vs v24b | no effect |
 | v27r `1bf5a51` | giddygiddyboy's latest tweaks only (focus, finish, lethal, fight cubes) | 4.46 | -0.08 vs v26a | no effect: tweaks need their combat core |
 | **v28 `05180cc`** | **giddygiddyboy's practice combat core (engage rules, fight positioning, latency aim, short retreat)** | **5.13** | **+0.59 vs v26a** | **keep: current best / baseline** |
+| v29 `fb664bb` | v28 + laser only at mechs + drone/crate fire gating with return fire + eager reload | 4.94 | -0.19 vs v28 | reject; singles v29a/b/c pending |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
