@@ -28,6 +28,7 @@ WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
 V24_HEAL = False
 V24_KEEP_GUN = True
 V24_DODGE = True
+V26_DODGENOBOOST = True
 
 
 def wrap(a):
@@ -383,8 +384,8 @@ class Bot:
                 n = math.hypot(*move)
                 if n > 1:
                     move = (move[0] / n, move[1] / n)
-                if me["energy"] > (55 if ki is not None and target is not None else 25):
-                    boost = True
+                if not V26_DODGENOBOOST and me["energy"] > (55 if ki is not None and target is not None else 25):
+                    boost = True  # v26-dodgenoboost: when on, a dodge never boosts (no 90 m boost sound, no energy drain)
                 mode += "+bdodge"
         # take a pickup if within reach
         take = self.want_take(obs, me, p2)
