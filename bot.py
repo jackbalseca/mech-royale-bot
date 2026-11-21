@@ -451,7 +451,9 @@ class Bot:
                                         or (threats3 >= 2 and hp_frac < 0.55) or (threats3 >= 3 and hp_frac < 0.8))
             if losing:
                 self.recovering = True
-            if finishing:
+            if finishing and (vis or not self.recovering):
+                # v11: while already recovering, only abandon recovery to finish a low-HP enemy we can actually
+                # shoot (vis = the same muzzle line-of-sight check used for target selection); otherwise stay in cover.
                 self.recovering = False
             if self.recovering and (hp_frac > 0.85 or (d < 22 and enemy_hp < me["hp"])):
                 self.recovering = False
