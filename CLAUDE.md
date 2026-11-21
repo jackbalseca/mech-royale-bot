@@ -7,6 +7,16 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 **`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
 Current best official build: **v16 `3881e26` = 4.02** (branch `exp-v16-still`).
 
+**Baseline rule (team rule, Sat 1:54 AM):** the **highest official score is always the baseline**. Every new
+experiment branches from that commit and is judged against it, never against an older or lower build. When a
+build beats it, that build becomes the new baseline (update the line above in the same commit as its log row).
+
+**Repeated scores:** official scores are multiples of 1/48 (total points / 48), and the scorer is deterministic for
+identical behaviour (v3 = v6 = 3.81 exactly, because v6's change never triggered). When a score repeats or nearly
+repeats an earlier one, check `git diff` between the two commits: either the change never fired (behaviour
+identical) or it is chaos noise (an RNG-salt re-roll alone moved 0.06). Neither counts as a gain or a loss.
+Log the repeat in LEARNINGS.md with what differed between the two builds.
+
 ## What this is
 - Bot for the Builders Buildathon **Mech Royale** track. Protocol and rules: `protocol.md`.
 - The scorer builds the `Dockerfile` at the repo top on linux/amd64 and runs `bot.py`.
