@@ -5,3 +5,5 @@ tools
 *.md
 !README.md
 __pycache__
+.claude
+.github

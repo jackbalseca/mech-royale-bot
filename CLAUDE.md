@@ -3,6 +3,10 @@
 Read this before changing anything. These rules exist because breaking one can cost us a
 submission, our qualifying spot, or the final. They apply to people and AI assistants alike.
 
+**Also read `LEARNINGS.md`** (every official result and what it taught us) and follow the
+**`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
+Current best official build: **v10 `4c977b2` = 3.92** (branch `exp-v10-commit`).
+
 ## What this is
 - Bot for the Builders Buildathon **Mech Royale** track. Protocol and rules: `protocol.md`.
 - The scorer builds the `Dockerfile` at the repo top on linux/amd64 and runs `bot.py`.
@@ -68,8 +72,8 @@ python3 tools/errscan.py 3 4              # must report 0 errors
 python3 tools/sim.py --mode practice --bots bot.py --matches 16
 python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8 --matches 6
 ```
-- The sim (`tools/sim.py`) is an approximation. Use it to compare **A vs B**, not to predict
-  absolute scores. Practice mode uses our stand-in house bots (`tools/house.py`).
+- The sim (`tools/sim.py`) is **not predictive** (it ranked v7 best; officially it was worst). Use it only to
+  check that a mechanism fires (trigger counts, cubes, kills), never to justify a submission. Practice mode uses our stand-in house bots (`tools/house.py`).
 - The real Docker sandbox check (same flags as the scorer) is in `README.md`.
 - **Live tests on the real engine:** `tools/live_browser.js` runs the bot in your browser
   (Pyodide) in private free-for-all rooms on play.joinbuilders.org against the server's house
@@ -83,8 +87,8 @@ python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8
 - After a version is submitted, freeze a copy: `cp bot.py tools/bots/vN.py`. That copy is the
   reference opponent for the next sim comparisons.
 - Log every submission in `SUBMISSIONS.md`: hash, time, score, and what changed.
-- Scores move ±0.3 between runs from noise alone (48 matches). Don't conclude much from a
-  difference smaller than that.
+- Practice scoring is **deterministic** (same 48 seeds). Measured noise from re-rolling our own RNG is
+  **about ±0.1**, so a change of more than about 0.15 is a real effect. Smaller differences are "no effect".
 
 ## Picking the final entry
 - By default the scorer enters our **best practice score**. Qualifying and the final are
@@ -110,6 +114,8 @@ python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8
   overrides, since those can undo a safe zone decision.
 - **Resources:** judge loot, upgrades and fights against HP, energy, time to cover and the next
   zone crossing. Untried idea: an upgrade order that depends on which weapons we hold.
+- **Exposure costs points in practice** (see `LEARNINGS.md`): roaming, optional gunfire, open-street
+  kiting and long fights all lost points. Fewer, faster fights and staying hidden gained.
 - **Experiments:** start from the best scored commit. Name one failure mode, one change, and
   the result that would justify keeping it. Only a match result establishes a gain. The
   recorded stream (`tools/replay.py`) only checks decisions and timing.
