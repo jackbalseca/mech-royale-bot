@@ -55,6 +55,10 @@ LAT = 0.075
 # finishes below 25% HP, never retreats late or while finishing, and when no cover exists it fights from where it is
 # ("cornered") instead of fleeing across open ground.
 V36_CORNER = True
+# v41 (port audit finding 9): Go plays its default (Ghost) engage rules for the first 20 s and only then switches to
+# the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
+# under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
+V41_OPENING = True
 
 
 def wrap(a):
@@ -288,8 +292,12 @@ class Bot:
                 closing = (vm[0] * (pos[0] - m["pos"][0]) + vm[1] * (pos[1] - m["pos"][1])) / max(d2, 1e-6)
                 hp_m, mx_m = m.get("hp", 1400), m.get("max_hp", 1400)
                 late = obs["zone"]["next_radius"] <= 70 or obs["alive"] <= 3
-                engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 6 or late or (closing > 3 and d2 < 180)
-                          or (hp_m < 0.4 * mx_m and d2 < 160) or (aimed and d2 < 190))
+                if V41_OPENING and t <= 20:
+                    engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 4 or (aimed and m.get("charging") and d2 < 120)
+                              or (hp_m < 350 and d2 < 120) or obs["alive"] <= 2)
+                else:
+                    engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 6 or late or (closing > 3 and d2 < 180)
+                              or (hp_m < 0.4 * mx_m and d2 < 160) or (aimed and d2 < 190))
                 if not engage or d2 > 240:
                     continue
             elif not ffa and not hostile and not d < 25:
