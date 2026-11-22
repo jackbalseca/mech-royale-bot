@@ -5,7 +5,7 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 
 **Also read `LEARNINGS.md`** (every official result and what it taught us) and follow the
 **`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
-Current best official build: **v60 `d692b85b522fd890c8dfddbab4b27251f1a9efde` = 5.05 under scorer builders-4** (96 fresh random seeds per run since Sun ~12:50 AM; it was 5.35 under builders-3). v41 resubmitted for a builders-4 score. Never compare builders-3 and builders-4 scores.
+Current best official build: **v60 `d692b85b522fd890c8dfddbab4b27251f1a9efde` = 5.05 under scorer builders-4** (96 fresh random seeds per run since Sun ~12:50 AM; it was 5.35 under builders-3). v41 resubmitted: **5.13 under builders-4** (best, entered). #32 cutoff 5.65 at Sun 2:10 AM. Never compare builders-3 and builders-4 scores.
 
 **Baseline rule (team rule, Sat 1:54 AM):** the **highest official score is always the baseline**. Every new
 experiment branches from that commit and is judged against it, never against an older or lower build. When a
