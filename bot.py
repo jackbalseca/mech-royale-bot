@@ -65,6 +65,9 @@ V56_LASERSEEK = True
 # v60 (own idea, from v59 = -0.27): leaving nearby passive squad bots alone cost points, so attacking them pays with
 # the v28 core (each kill is a place). Extend the "near" engage distance from 60 m to 90 m while we are above 60% HP.
 V60_NEAR = 90.0
+# v65 (own idea, from v64 = -0.58: lightning-first lost big): with gun + lightning we close to 28 m, which exposes us
+# to the squad at short range. Keep gun spacing instead (60/85 m); lightning still fires at anything inside 45 m.
+V65_LIGHTFAR = True
 
 
 def wrap(a):
@@ -704,7 +707,7 @@ class Bot:
                     return "fight-cube", wp, mv, boostf, False
                 return "fight", None, mvf, boostf, False
             kinds = self.slots(me)
-            if "lightning" in kinds and me["energy"] > 25:
+            if "lightning" in kinds and me["energy"] > 25 and not V65_LIGHTFAR:
                 want = 28.0
             elif "laser" in kinds:
                 want = 85.0
@@ -774,7 +777,7 @@ class Bot:
         gun = next((w for w in ws if w["kind"] == "gun"), None)
         laser = next((w for w in ws if w["kind"] == "laser"), None)
         light = next((w for w in ws if w["kind"] == "lightning"), None)
-        if light is not None and me["energy"] > 12:
+        if light is not None and me["energy"] > 12 and not V65_LIGHTFAR:
             rp = 28.0
         elif laser is not None:
             rp = 120.0
