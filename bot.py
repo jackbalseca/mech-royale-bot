@@ -62,6 +62,10 @@ V41_OPENING = True
 # v56 (own implementation of an idea from the 6.19 squad build): seek the laser. Without a laser, go for any laser
 # pickup we see or remember within 240 m (inside the zone), not just visible swaps within 90 m.
 V56_LASERSEEK = True
+# v57 (own idea, from a sim death probe): mid-fight cube walks were in the last 10 s of 9/20 deaths, often with 3-4
+# mechs in view or below 20% HP. Detour to a cube during a fight only with <= 1 mech in view and > 50% HP, or when
+# the cube is within 12 m; otherwise keep the fight movement (strafe/cover).
+V57_FIGHTCUBE = True
 
 
 def wrap(a):
@@ -694,6 +698,8 @@ class Bot:
                 mvf, boostf = self.fight_move(obs, me, p2, m, c, d, enemy_frac, hp_frac, threats3, t, c_next, r_next)
                 rr = 70.0 if hp_frac > 0.5 else 40.0  # FightLoot 70 (x0.57 when hurt), part of the 6.19 build
                 near = [cb for cb in obs.get("cubes", []) if hdist(p2, cb["pos"]) < rr and abs(cb["pos"][2] - me["pos"][2]) < 4]
+                if V57_FIGHTCUBE and not (threats3 <= 1 and hp_frac > 0.5):
+                    near = [cb for cb in near if hdist(p2, cb["pos"]) < 12.0]
                 if near:
                     cb = min(near, key=lambda q: hdist(p2, q["pos"]))
                     mv, wp = self.nav_move(p2, cb["pos"], onroof)
