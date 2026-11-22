@@ -59,6 +59,10 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v46 (our own design): from mid-game the squad converges on us. When idle from the second zone phase (next circle
+# <= 240 m) or <= 8 alive, move to the least exposed reachable spot within 90 m inside the next circle (precomputed exposure
+# map, cache/expo.npz) and hold it, so fewer hunters can see us at once.
+V46_EXPO = True
 
 
 def wrap(a):
@@ -89,6 +93,14 @@ class Bot:
         self.world = World(hello["map"]["dir"])
         g = dict(np.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "nav.npz")))
         self.nav = Nav(self.world, g)
+        self.expo = None  # v46
+        try:
+            e = np.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache", "expo.npz"))
+            self.expo = (e["xs"], e["ys"], e["expo"])
+        except Exception:
+            self.expo = None
+        self.expo_goal = None
+        self.expo_t = -99.0
         self.W = cfg["weapons"]
         self.reach = cfg["loot"]["pickup_radius"]
         # state
@@ -757,7 +769,46 @@ class Bot:
                 mv, wp = self.nav_move(p2, cov, onroof)
                 return "heal-to-cover", wp, mv, False, False
             return ("heal-cover" if cov is not None else "heal"), None, (0.0, 0.0), False, False
+        if V46_EXPO and self.expo is not None and self.ffa_score < 1 and not onroof and (obs["alive"] <= 8 or r_next <= 240):
+            g = self.expo_spot(p2, t, c_next, r_next)
+            if g is not None and hdist(p2, g) > 3.0:
+                mv, wp = self.nav_move(p2, g, onroof)
+                return "expo", wp, mv, False, False
+            if g is not None:
+                return "expo-hold", None, (0.0, 0.0), False, False
         return "idle", None, (0.0, 0.0), False, False
+
+    def expo_spot(self, p2, t, c_next, r_next):
+        """v46: least exposed walkable lattice spot within 90 m inside the next circle; re-chosen every 3 s and only
+        when it beats our current spot by > 0.1 exposure."""
+        if self.expo_goal is not None and t - self.expo_t < 3.0 and hdist(self.expo_goal, c_next) <= r_next - 12:
+            return self.expo_goal
+        xs, ys, ex = self.expo
+        i0, j0 = int(np.searchsorted(xs, p2[0] - 90)), int(np.searchsorted(ys, p2[1] - 90))
+        i1, j1 = int(np.searchsorted(xs, p2[0] + 90)), int(np.searchsorted(ys, p2[1] + 90))
+        sub = ex[j0:j1, i0:i1]
+        if sub.size == 0:
+            return None
+        gx, gy = np.meshgrid(xs[i0:i1], ys[j0:j1])
+        dme = np.hypot(gx - p2[0], gy - p2[1])
+        dz = np.hypot(gx - c_next[0], gy - c_next[1])
+        ok = np.isfinite(sub) & (dme <= 90) & (dz <= r_next - 12)
+        if not ok.any():
+            return None
+        score = np.where(ok, sub + dme * 0.002, np.inf)
+        k = np.unravel_index(int(np.argmin(score)), score.shape)
+        best = (float(gx[k]), float(gy[k]))
+        # exposure where we stand now (nearest lattice cell)
+        ci = min(max(int(round((p2[0] - xs[0]) / (xs[1] - xs[0]))), 0), len(xs) - 1)
+        cj = min(max(int(round((p2[1] - ys[0]) / (ys[1] - ys[0]))), 0), len(ys) - 1)
+        cur = ex[cj, ci]
+        here_ok = np.isfinite(cur) and hdist(p2, c_next) <= r_next - 12
+        if here_ok and float(sub[k]) > float(cur) - 0.1:
+            best = (p2[0], p2[1])  # not worth the walk
+        if not self.world.walkable(*best):
+            return None
+        self.expo_goal, self.expo_t = best, t
+        return best
 
     def fight_move(self, obs, me, p2, m, c, d, enemy_frac, hp_frac, crowd, t, c_next, r_next):
         """v28: giddygiddyboy's fightMove (MIT; see CREDITS.md), rewritten: score standing still and 16 spots at 6 m
