@@ -69,6 +69,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v50 (not submitted) | v41 + fight_move penalty 60 (was 30) per other mech that sees a spot | - | sim 3.10 -> 2.90 | shelved |
 | v51 `a8a5aac` | v41 without boost on bullet dodges | 5.17 | -0.14 vs v41 | reject: **dodge boost still pays** (sim predicted +0.25: the sim is not predictive) |
 | v52 `e342e77` | v41 + early-window farming walk (own code) | 5.29 | -0.02 vs v41 | neutral: farming early neither helps nor hurts; one more idle-movement change that did not pay |
+| v53 `ece6862` | v41 + laser pre-charge on a hostile that just ducked | 5.31 | 0.00 vs v41 (repeated score) | no effect: peeking fights are not where we lose. Sim probe of v41: 96% of damage we take is from the front, 64% of it from guns, zone 4% |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
