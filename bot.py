@@ -62,6 +62,9 @@ V41_OPENING = True
 # v56 (own implementation of an idea from the 6.19 squad build): seek the laser. Without a laser, go for any laser
 # pickup we see or remember within 240 m (inside the zone), not just visible swaps within 90 m.
 V56_LASERSEEK = True
+# v60 (own idea, from v59 = -0.27): leaving nearby passive squad bots alone cost points, so attacking them pays with
+# the v28 core (each kill is a place). Extend the "near" engage distance from 60 m to 90 m while we are above 60% HP.
+V60_NEAR = 90.0
 
 
 def wrap(a):
@@ -295,11 +298,12 @@ class Bot:
                 closing = (vm[0] * (pos[0] - m["pos"][0]) + vm[1] * (pos[1] - m["pos"][1])) / max(d2, 1e-6)
                 hp_m, mx_m = m.get("hp", 1400), m.get("max_hp", 1400)
                 late = obs["zone"]["next_radius"] <= 70 or obs["alive"] <= 3
+                near_d = V60_NEAR if hp_frac > 0.6 else 60.0
                 if V41_OPENING and t <= 20:
-                    engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 4 or (aimed and m.get("charging") and d2 < 120)
+                    engage = (d2 < near_d or t - self.hit_me.get(m["id"], -99) < 4 or (aimed and m.get("charging") and d2 < 120)
                               or (hp_m < 350 and d2 < 120) or obs["alive"] <= 2)
                 else:
-                    engage = (d2 < 60 or t - self.hit_me.get(m["id"], -99) < 6 or late or (closing > 3 and d2 < 180)
+                    engage = (d2 < near_d or t - self.hit_me.get(m["id"], -99) < 6 or late or (closing > 3 and d2 < 180)
                               or (hp_m < 0.4 * mx_m and d2 < 160) or (aimed and d2 < 190))
                 if not engage or d2 > 240:
                     continue
