@@ -65,6 +65,8 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v46 `646dcf0` | v41 + move to low-exposure spots when idle from mid-game (own design, exposure map) | 5.15 | -0.16 vs v41 | reject |
 | v47 (not submitted) | v41 + boost whenever a visible mech aims at us in fights (own design) | - | sim: 4.00 -> 2.67, kills and survival both down on the same seeds | shelved on sim evidence |
 | v48 `2ef2783` | v41 + prefer mechs that rear-hit us in the last 3 s (own idea) | 5.29 | -0.02 vs v41 | no effect |
+| v49 `a22a788` | v41 + cautious engage rules until we hold a second weapon (own idea, from sim deaths) | 5.08 | -0.23 vs v41 | reject: caution only pays in the opening 20 s |
+| v50 (not submitted) | v41 + fight_move penalty 60 (was 30) per other mech that sees a spot | - | sim 3.10 -> 2.90 | shelved |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
