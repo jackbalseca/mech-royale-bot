@@ -59,6 +59,11 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v68 (own fix, from a sim probe): one squad bot dying to the zone or a drone (or a kill event a tick late) set
+# ffa_score >= 1 for the rest of the match in 10/20 practice sim matches (~140 s), which turns off the v28 practice
+# engage/fight rules and cornered fighting. Now deaths are matched against our kills with 3 ticks of slack, and
+# free-for-all mode needs 3 deaths we did not cause.
+V68_FFA_DEATHS = 3
 
 
 def wrap(a):
@@ -219,7 +224,19 @@ class Bot:
                 self.my_kills += 1
             elif e["type"] == "take_failed":
                 self.bad_pickups[e["id"]] = t
-        if self.prev_alive is not None and obs["alive"] < self.prev_alive:
+        if V68_FFA_DEATHS:
+            if self.prev_alive is not None and obs["alive"] < self.prev_alive:
+                self._drops = getattr(self, "_drops", 0) + (self.prev_alive - obs["alive"])
+            self._kills_cum = getattr(self, "_kills_cum", 0) + sum(1 for e in obs.get("events", []) if e["type"] == "kill")
+            hist = getattr(self, "_drop_hist", [])
+            hist.append(getattr(self, "_drops", 0))
+            if len(hist) > 4:
+                hist.pop(0)
+            self._drop_hist = hist
+            unexpl = hist[0] - self._kills_cum  # deaths up to 3 ticks ago that no kill of ours explains
+            self._ffa_max = max(getattr(self, "_ffa_max", 0), unexpl)
+            self.ffa_score = 1.0 if self._ffa_max >= V68_FFA_DEATHS else 0.0
+        elif self.prev_alive is not None and obs["alive"] < self.prev_alive:
             mine = sum(1 for e in obs.get("events", []) if e["type"] == "kill")
             self.ffa_score += (self.prev_alive - obs["alive"]) - mine
         self.prev_alive = obs["alive"]
