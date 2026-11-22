@@ -64,7 +64,7 @@ V41_OPENING = True
 V56_LASERSEEK = True
 # v60 (own idea, from v59 = -0.27): leaving nearby passive squad bots alone cost points, so attacking them pays with
 # the v28 core (each kill is a place). Extend the "near" engage distance from 60 m to 90 m while we are above 60% HP.
-V60_NEAR = 90.0
+V60_NEAR = 120.0  # v61: same rule as v60, step 120 m
 
 
 def wrap(a):
