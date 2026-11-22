@@ -59,6 +59,11 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v52 (our own implementation of an idea several top teams log as a gain: farm only early): cubes are +4% max HP and
+# +4% damage each. In the first 150 s, at > 70% HP, < 6 cubes, with no hostile seen for 4 s and nothing to shoot,
+# walk toward the nearest drone (<= 90 m) or crate (<= 70 m) inside the zone; once it is in line of sight our normal
+# side-target logic shoots it. Our all-match farming (v14, v31) lost; this stops after the opening window.
+V52_EARLYFARM = True
 
 
 def wrap(a):
@@ -729,6 +734,18 @@ class Bot:
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
             return "cube", wp, mv, False, False
+        # 3c. v52: early-window farming walk (only while nothing is being shot)
+        if (V52_EARLYFARM and side is None and t < 150 and hp_frac > 0.7 and me.get("cubes", 0) < 6
+                and self.ffa_score < 1 and not onroof
+                and not any(t - v[0] < 4.0 and t - self.hostile.get(k, -99) < 12.0 for k, v in self.enemy_seen.items())):
+            goals = [(hdist(p2, n["pos"]), n["pos"]) for n in obs["mechs"] if n["kind"] == "npc"
+                     and hdist(p2, n["pos"]) <= 90 and hdist(n["pos"], c_soon) < r_soon - 10]
+            goals += [(hdist(p2, cr["pos"]), cr["pos"]) for cr in obs.get("crates", [])
+                      if hdist(p2, cr["pos"]) <= 70 and hdist(cr["pos"], c_soon) < r_soon - 10]
+            if goals:
+                _d, gpos = min(goals, key=lambda g: g[0])
+                mv, wp = self.nav_move(p2, gpos, onroof)
+                return "early-farm", wp, mv, False, False
         # 4. shooting an NPC or crate: hold still-ish and keep some distance from NPCs
         if side is not None:
             m, c, d, _ = side
