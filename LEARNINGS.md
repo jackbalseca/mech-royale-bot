@@ -80,6 +80,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v61 `e60b0e3` | v60 at 120 m | 5.33 | -0.02 vs v60 | flat: engage distance 60/90/120 m = 5.33/5.35/5.33. The v59 loss is about passive mechs within 25-60 m, not range |
 | v62 `030b63d` | v60 without the opening caution (V41_OPENING off) | 5.21 | -0.14 vs v60 | borderline loss: the first-20-s caution is worth keeping (it measured +0.04 when added, ~+0.14 when removed) |
 | v63 `10db8ce` | v60 + stalk passive squad bots within 200 m when healthy | 5.33 | -0.02 vs v60 | flat: hunting passive bots does not add what fighting the close ones does (v59). Sim said +0.65 kills |
+| v64 `990eece` | v60, prefer lightning over the laser | 4.77 | **-0.58 vs v60** | **big real loss: never trade the laser for lightning.** Lightning fights close to 28 m; the laser fights from 85-120 m |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
