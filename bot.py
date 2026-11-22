@@ -59,6 +59,10 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v51 (testing an idea from the 6.19 bot against our own v26b result): with v28's positioning, stop boosting on bullet
+# dodges (they used ~70% of our fight boosts), keeping energy for lightning and positioning. v26b lost -0.65 doing this
+# under the OLD fight logic; the new core may differ.
+V51_NODODGEBOOST = True
 
 
 def wrap(a):
@@ -508,7 +512,7 @@ class Bot:
                 n = math.hypot(*move)
                 if n > 1:
                     move = (move[0] / n, move[1] / n)
-                if me["energy"] > (55 if ki is not None and target is not None else 25):
+                if not V51_NODODGEBOOST and me["energy"] > (55 if ki is not None and target is not None else 25):
                     boost = True
                 mode += "+bdodge"
         # take a pickup if within reach
