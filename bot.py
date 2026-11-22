@@ -25,6 +25,9 @@ UPGRADE_PRIORITY = [
     "servos", "sensors", "mortar_reload", "mortar_splash", "mortar_velocity", "jets", "gun_velocity", "laser_pierce",
 ]
 WEAPON_RANK = {"laser": 3.0, "lightning": 2.5, "gun": 2.0, "mortar": 1.0}
+# v64 (own idea): our fights are mostly close (engage < 60-90 m). Lightning is ~240 dmg/s inside 45 m vs ~130 for the
+# laser, so prefer lightning: keep it over a laser and swap a laser for it. (Laser seek then only fills an empty slot.)
+WEAPON_RANK["lightning"] = 3.5
 # v34: giddygiddyboy's upgrade orders (MIT; see CREDITS.md): laser-first in practice (their squad profile), default in FFA
 V34_UPGRADES = True
 UPGRADE_ORDER_LASER = [
