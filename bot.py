@@ -65,6 +65,10 @@ V56_LASERSEEK = True
 # v60 (own idea, from v59 = -0.27): leaving nearby passive squad bots alone cost points, so attacking them pays with
 # the v28 core (each kill is a place). Extend the "near" engage distance from 60 m to 90 m while we are above 60% HP.
 V60_NEAR = 90.0
+# v63 (own idea, from v59 = -0.27: fighting reachable squad bots pays): when healthy (> 80% HP), after the opening
+# (t > 20), with no hostile seen for 6 s and no target, walk toward the nearest passive squad bot seen in the last 3 s
+# within 200 m (inside the zone). Once it is within V60_NEAR the normal engage rule fights it.
+V63_STALK = True
 
 
 def wrap(a):
@@ -726,6 +730,15 @@ class Bot:
         self.recovering = self.recovering and hp_frac < 0.85
         if V28_RETREAT and t - self.lose_t >= 1.5:
             self.recovering = False
+        # 3b. v63: stalk a passive squad bot while healthy and unhunted
+        if (V63_STALK and target is None and t > 20 and hp_frac > 0.8 and self.ffa_score < 1 and not zone_danger
+                and not any(t - self.hostile.get(k, -99) < 6.0 and t - v[0] < 6.0 for k, v in self.enemy_seen.items())):
+            prey = [(hdist(p2, v[1]), v[1]) for k, v in self.enemy_seen.items()
+                    if t - v[0] < 3.0 and hdist(p2, v[1]) < 200 and hdist(v[1], c_soon) < r_soon - 10]
+            if prey:
+                _d, gpos = min(prey, key=lambda g: g[0])
+                mv, wp = self.nav_move(p2, (gpos[0], gpos[1]), onroof)
+                return "stalk", wp, mv, False, False
         # 3. loot: weapons we want, then cubes
         pk = self.best_pickup(obs, me, p2, c_soon, r_soon)
         if pk is not None:
