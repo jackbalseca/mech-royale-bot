@@ -77,6 +77,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v58 `9a4a7d3` | v56, no long cube walks below 30% HP with a recent enemy | 5.27 | -0.06 vs v56 | no effect. With v57: restricting cube walks does not help |
 | v59 `05bac6d` | v56, leave passive mechs within 25-60 m alone | 5.06 | **-0.27 vs v56** | **real loss: with the v28 core, attacking nearby passive squad bots pays (kills = places).** This reverses v3 (+0.23 for not poking them), which was on the weak old core |
 | v60 `d692b85` | v56, engage out to 90 m while > 60% HP | 5.35 | +0.02 vs v56 | noise; new highest score, so baseline. Less passive engagement loses (v59), more is flat so far (v61 tests 120 m) |
+| v61 `e60b0e3` | v60 at 120 m | 5.33 | -0.02 vs v60 | flat: engage distance 60/90/120 m = 5.33/5.35/5.33. The v59 loss is about passive mechs within 25-60 m, not range |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
