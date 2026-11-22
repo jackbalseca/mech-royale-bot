@@ -81,6 +81,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v62 `030b63d` | v60 without the opening caution (V41_OPENING off) | 5.21 | -0.14 vs v60 | borderline loss: the first-20-s caution is worth keeping (it measured +0.04 when added, ~+0.14 when removed) |
 | v63 `10db8ce` | v60 + stalk passive squad bots within 200 m when healthy | 5.33 | -0.02 vs v60 | flat: hunting passive bots does not add what fighting the close ones does (v59). Sim said +0.65 kills |
 | v64 `990eece` | v60, prefer lightning over the laser | 4.77 | **-0.58 vs v60** | **big real loss: never trade the laser for lightning.** Lightning fights close to 28 m; the laser fights from 85-120 m |
+| v65 `252b28e` | v60, lightning keeps gun spacing (no close-in to 28 m) | 4.98 | **-0.37 vs v60** | **real loss: close to 28 m with lightning.** Spacing is sensitive (this touched ~24% of match time); v66/v67 test laser spacing 150/95 m |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
