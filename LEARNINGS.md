@@ -61,6 +61,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | **v41 `50579e7`** | **v36 + cautious engage rules for the first 20 s (Go's default profile)** | **5.31** | +0.04 vs v36 | noise; **baseline** by the highest-score rule |
 | v42b `082238c` | v41 + zone look-ahead 16 s | 5.27 | -0.04 vs v41 | no effect |
 | v44 `1f6f322` | v41 + mortar lobs over cover at recently seen hostiles (own idea) | 5.25 | -0.06 vs v41 | no effect |
+| v45 `e176a58` | v41 + lead the mortar by smoothed velocity x flight time (own idea) | 5.19 | -0.12 vs v41 | reject: leading strafing house bots misses more than aiming at them |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
