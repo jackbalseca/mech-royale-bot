@@ -62,6 +62,8 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v42b `082238c` | v41 + zone look-ahead 16 s | 5.27 | -0.04 vs v41 | no effect |
 | v44 `1f6f322` | v41 + mortar lobs over cover at recently seen hostiles (own idea) | 5.25 | -0.06 vs v41 | no effect |
 | v45 `e176a58` | v41 + lead the mortar by smoothed velocity x flight time (own idea) | 5.19 | -0.12 vs v41 | reject: leading strafing house bots misses more than aiming at them |
+| v46 `646dcf0` | v41 + move to low-exposure spots when idle from mid-game (own design, exposure map) | 5.15 | -0.16 vs v41 | reject |
+| v47 (not submitted) | v41 + boost whenever a visible mech aims at us in fights (own design) | - | sim: 4.00 -> 2.67, kills and survival both down on the same seeds | shelved on sim evidence |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
@@ -93,6 +95,7 @@ as neutral. The sim predicted the dodge would hurt (more die-first, earlier deat
 So "exposure" is about *roaming and being seen in the open*, not about moving inside a fight: active evasion during a fight is good.
 **v28 (Sat 1:40 PM): porting a top team's *combat core* (+0.59) beat porting its tuning tweaks (v27r, -0.08).**
 **v31 (Sat 4:55 PM): but porting its economy (farming walks) lost -0.36. Our bot gains from fighting well, not from roaming.**
+**Pattern (Sat 7:20 PM): every idle-movement change lost (v30 nav -0.15, v31 farming -0.36, v46 exposure spots -0.16); every gain came from fighting better (v28 core, v36 cornered, v41 cautious opening, dodge).**
 **New organizer rule (Sat 6:23 PM): excessive reuse of other teams' code (entries included) may disqualify. From v44 on we build our own implementations of ideas only; no more ported code.** The top-10 bots
 mostly run giddygiddyboy's MIT Go bot (6.19); another team's Python port of its core scored ~5.0-5.2, matching our 5.13.
 
