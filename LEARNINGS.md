@@ -68,6 +68,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v49 `a22a788` | v41 + cautious engage rules until we hold a second weapon (own idea, from sim deaths) | 5.08 | -0.23 vs v41 | reject: caution only pays in the opening 20 s |
 | v50 (not submitted) | v41 + fight_move penalty 60 (was 30) per other mech that sees a spot | - | sim 3.10 -> 2.90 | shelved |
 | v51 `a8a5aac` | v41 without boost on bullet dodges | 5.17 | -0.14 vs v41 | reject: **dodge boost still pays** (sim predicted +0.25: the sim is not predictive) |
+| v52 `e342e77` | v41 + early-window farming walk (own code) | 5.29 | -0.02 vs v41 | neutral: farming early neither helps nor hurts; one more idle-movement change that did not pay |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
