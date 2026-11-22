@@ -59,6 +59,8 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v55 (own tuning probe): break off sooner. Losing = <42% HP and behind, or 2+ visible threats at <65%, or 3+ at <90%.
+V54_LOSE = (0.42, 0.65, 0.90)
 
 
 def wrap(a):
@@ -655,8 +657,8 @@ class Bot:
             if V36_CORNER:
                 threats3 = sum(1 for e in obs["mechs"] if e["kind"] == "mech" and hdist(p2, e["pos"]) < 160)
             finishing = enemy_frac < (0.25 if V36_CORNER else 0.2) and hp_frac > 0.2 and threats3 <= 2
-            losing = not finishing and ((hp_frac < 0.35 and enemy_frac > hp_frac + 0.1)
-                                        or (threats3 >= 2 and hp_frac < 0.55) or (threats3 >= 3 and hp_frac < 0.8))
+            losing = not finishing and ((hp_frac < V54_LOSE[0] and enemy_frac > hp_frac + 0.1)
+                                        or (threats3 >= 2 and hp_frac < V54_LOSE[1]) or (threats3 >= 3 and hp_frac < V54_LOSE[2]))
             if losing:
                 self.recovering = True
                 self.lose_t = t
