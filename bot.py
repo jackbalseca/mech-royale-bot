@@ -62,6 +62,10 @@ V41_OPENING = True
 # v56 (own implementation of an idea from the 6.19 squad build): seek the laser. Without a laser, go for any laser
 # pickup we see or remember within 240 m (inside the zone), not just visible swaps within 90 m.
 V56_LASERSEEK = True
+# v58 (own idea, from a sim death probe): after narrow wins (0-18% HP) we walked into the open for the kill's cubes
+# and the next hunter, already on its way, finished us. Below 30% HP with a mech seen in the last 6 s, walk only to
+# cubes within 12 m. (A full heal mode lost in v24; this blocks only the low-HP cube walk.)
+V58_LOWCUBE = True
 
 
 def wrap(a):
@@ -728,6 +732,8 @@ class Bot:
             mv, wp = self.nav_move(p2, pk["pos"], onroof)
             return "loot", wp, mv, False, False
         cubes = [c for c in obs.get("cubes", []) if hdist(p2, c["pos"]) < 70 and hdist(c["pos"], c_soon) < r_soon - 10]
+        if V58_LOWCUBE and hp_frac < 0.3 and any(t - v[0] < 6.0 for v in self.enemy_seen.values()):
+            cubes = [c for c in cubes if hdist(p2, c["pos"]) < 12.0]
         if cubes and not self.heal:  # v24-heal: no cube walks while healing
             cb = min(cubes, key=lambda c: hdist(p2, c["pos"]))
             mv, wp = self.nav_move(p2, cb["pos"], onroof)
