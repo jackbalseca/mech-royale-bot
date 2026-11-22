@@ -72,6 +72,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v53 `ece6862` | v41 + laser pre-charge on a hostile that just ducked | 5.31 | 0.00 vs v41 (repeated score) | no effect: peeking fights are not where we lose. Sim probe of v41: 96% of damage we take is from the front, 64% of it from guns, zone 4% |
 | v54 `a349d0c` | v41, break off fights later | 5.27 | -0.04 vs v41 | noise-level; v55 tests the other direction |
 | v55 `a06051d` | v41, break off fights sooner | 5.27 | -0.04 vs v41 | both directions 5.27: v41 sits at the top of a flat curve. Parameter tuning of the current design is exhausted (v52-v55 all within noise) |
+| v56 `81bf24e` | v41 + laser seek to 240 m (seen or remembered) | 5.33 | +0.02 vs v41 | noise-level; highest score so far. Laser seek no longer costs points with the v28 core (v25: -0.23). Check this table before building: an idea may already be tested |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
