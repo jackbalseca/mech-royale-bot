@@ -74,6 +74,7 @@ Last updated: Sat Nov 21, 6:19 AM ET.
 | v55 `a06051d` | v41, break off fights sooner | 5.27 | -0.04 vs v41 | both directions 5.27: v41 sits at the top of a flat curve. Parameter tuning of the current design is exhausted (v52-v55 all within noise) |
 | v56 `81bf24e` | v41 + laser seek to 240 m (seen or remembered) | 5.33 | +0.02 vs v41 | noise-level; highest score so far. Laser seek no longer costs points with the v28 core (v25: -0.23). Check this table before building: an idea may already be tested |
 | v57 `d95e5a6` | v56, fewer mid-fight cube detours (only <=1 mech in view and >50% HP) | 5.21 | -0.12 vs v56 | reject: grabbing cubes mid-fight seems to pay for its exposure (cubes = +4% HP and damage each) |
+| v58 `9a4a7d3` | v56, no long cube walks below 30% HP with a recent enemy | 5.27 | -0.06 vs v56 | no effect. With v57: restricting cube walks does not help |
 
 ## The pattern: exposure costs points
 In practice we fight 15 house bots that **share every sighting** and **hunt us** (one hunter at first, more as we
