@@ -65,6 +65,8 @@ V56_LASERSEEK = True
 # v60 (own idea, from v59 = -0.27): leaving nearby passive squad bots alone cost points, so attacking them pays with
 # the v28 core (each kill is a place). Extend the "near" engage distance from 60 m to 90 m while we are above 60% HP.
 V60_NEAR = 90.0
+# v66/v67 (own tuning probe, from v65: fight spacing is sensitive): preferred fight range with the laser (was 120 m).
+V66_LASER_RP = 95.0
 
 
 def wrap(a):
@@ -777,7 +779,7 @@ class Bot:
         if light is not None and me["energy"] > 12:
             rp = 28.0
         elif laser is not None:
-            rp = 120.0
+            rp = V66_LASER_RP
         else:
             rp = 85.0
         if enemy_frac < 0.38 and hp_frac > 0.42 and crowd <= 2:
