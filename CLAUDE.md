@@ -5,7 +5,7 @@ submission, our qualifying spot, or the final. They apply to people and AI assis
 
 **Also read `LEARNINGS.md`** (every official result and what it taught us) and follow the
 **`mech-royale-experiment` skill** (`.claude/skills/mech-royale-experiment/SKILL.md`) for any bot change.
-Current best official build: **v60 `d692b85b522fd890c8dfddbab4b27251f1a9efde` = 5.35** (branch `exp-v60-engage90`; = v41 + laser seek + engage to 90 m; +0.04 over v41 is noise). The team chose to keep v41 (5.31) as the final entry.
+Current best official build: **v60 `d692b85b522fd890c8dfddbab4b27251f1a9efde` = 5.05 under scorer builders-4** (96 fresh random seeds per run since Sun ~12:50 AM; it was 5.35 under builders-3). v41 resubmitted for a builders-4 score. Never compare builders-3 and builders-4 scores.
 
 **Baseline rule (team rule, Sat 1:54 AM):** the **highest official score is always the baseline**. Every new
 experiment branches from that commit and is judged against it, never against an older or lower build. When a
@@ -97,8 +97,8 @@ python3 tools/sim.py --mode ffa --bots bot.py:8,tools/bots/<last-submitted>.py:8
 - After a version is submitted, freeze a copy: `cp bot.py tools/bots/vN.py`. That copy is the
   reference opponent for the next sim comparisons.
 - Log every submission in `SUBMISSIONS.md`: hash, time, score, and what changed.
-- Practice scoring is **deterministic** (same 48 seeds). Measured noise from re-rolling our own RNG is
-  **about ±0.1**, so a change of more than about 0.15 is a real effect. Smaller differences are "no effect".
+- **Since builders-4 (Sun ~12:50 AM) each run plays 96 fresh random seeds**, so scores of different builds also differ by
+  seed luck: roughly ±0.3. Only large effects are measurable. (Under builders-3 it was 48 fixed seeds and ±0.1 noise.)
 
 ## Picking the final entry
 - By default the scorer enters our **best practice score**. Qualifying and the final are
