@@ -59,6 +59,11 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v53 (own idea): laser pre-charge. A hostile mech that broke line of sight in the last 2 s, within 0.8x laser range,
+# usually peeks again soon. Start charging while it is hidden (we already face its last position), so a full 315 shot
+# is ready the moment it reappears instead of 0.75 s later. Only at > 50% HP and outside zone danger, since charging
+# halves our speed and is visible/audible. If it never reappears, the charge auto-fires after hold_s, as today.
+V53_PRECHARGE = True
 
 
 def wrap(a):
@@ -459,6 +464,14 @@ class Bot:
             aim = self.look_dir(me, t, p2, target)
         if target is None and gun and gun.get("ammo", 0) < gun["stats"]["mag"] * 0.5 and gun.get("reload", 0) == 0 and not recent_enemy:
             act["reload"] = True
+        # v53: pre-charge the laser at a hostile that just ducked out of sight
+        if (V53_PRECHARGE and laser is not None and not shoot and target is not None and hp_frac > 0.5 and not zone_danger
+                and laser.get("charge", 0) == 0 and laser.get("cooldown", 0) <= 0.05):
+            tm, tc, td, _tv = target
+            seen = self.enemy_seen.get(tm["id"])
+            if (tm.get("kind") == "mech" and seen is not None and t - seen[0] < 2.0
+                    and td < laser["stats"]["range"] * 0.8 and t - self.hostile.get(tm["id"], -99) < 12.0):
+                fire[li] = True
         # a held laser charge with nothing to shoot: keep holding (it auto-fires after hold_s)
         if laser is not None and laser.get("charge", 0) > 0 and not shoot:
             fire[li] = True
