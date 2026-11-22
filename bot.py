@@ -59,6 +59,9 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v56 (own implementation of an idea from the 6.19 squad build): seek the laser. Without a laser, go for any laser
+# pickup we see or remember within 240 m (inside the zone), not just visible swaps within 90 m.
+V56_LASERSEEK = True
 
 
 def wrap(a):
@@ -903,20 +906,25 @@ class Bot:
             return None  # v24-heal: fetch a weapon only into an empty slot while healing (no swaps)
         best, bestv = None, 0.0
         cands = list(obs.get("pickups", []))
-        if None in kinds:  # v19: with an empty slot, also go to weapons we saw earlier
+        seek = V56_LASERSEEK and "laser" not in kinds
+        if None in kinds or seek:  # v19: with an empty slot, also go to weapons we saw earlier (v56: lasers always)
             vis = {pk["id"] for pk in cands}
-            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items() if i not in vis]
+            cands += [{"id": i, "kind": v[0], "pos": v[1]} for i, v in self.pk_mem.items()
+                      if i not in vis and (None in kinds or v[0] == "laser")]
         for pk in cands:
             k = pk["kind"]
             if k in kinds or self.bad_pickups.get(pk["id"], -99) > obs["t"] - 5:
                 continue
             d = hdist(p2, pk["pos"])
-            if d > (160 if None in kinds else 90) or hdist(pk["pos"], c_soon) > r_soon - 8:
+            lim = 240 if (seek and k == "laser") else (160 if None in kinds else 90)
+            if d > lim or hdist(pk["pos"], c_soon) > r_soon - 8:
                 continue
             gain = self.loadout_gain(kinds, k)
             if gain <= 0:
                 continue
             v = gain * 100 - d
+            if seek and k == "laser":
+                v = max(v, 250 - d)
             if v > bestv:
                 best, bestv = pk, v
         return best
