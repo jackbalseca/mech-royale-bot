@@ -58,7 +58,7 @@ V36_CORNER = True
 # v41 (port audit finding 9): Go plays its default (Ghost) engage rules for the first 20 s and only then switches to
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
-V41_OPENING = True
+V41_OPENING = False  # v62: the opening caution measured +0.04 (noise); v59/v60 say engaging pays, so use the normal rule from t=0
 # v56 (own implementation of an idea from the 6.19 squad build): seek the laser. Without a laser, go for any laser
 # pickup we see or remember within 240 m (inside the zone), not just visible swaps within 90 m.
 V56_LASERSEEK = True
