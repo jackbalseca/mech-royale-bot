@@ -59,6 +59,9 @@ V36_CORNER = True
 # the practice rules: engage only within 60 m, if hit in the last 4 s, charging a laser at us within 120 m,
 # under 350 HP within 120 m, or with <= 2 alive (giddygiddyboy DefaultParams/squadParams, MIT)
 V41_OPENING = True
+# v48 (our own idea): hits from outside our front arc do x1.5 and our aim follows our target, so a second mech shooting
+# us in the back keeps getting rear hits. Prefer (score -150) a mech that rear-hit us in the last 3 s, so we face it.
+V48_REARFACE = True
 
 
 def wrap(a):
@@ -96,6 +99,7 @@ class Bot:
         self.stick = (None, -99.0)  # v27: (target id, time chosen)
         self.hit_me = {}  # v28: mech id -> last time it damaged us
         self.lose_t = -99.0  # v28: last tick we were losing a fight
+        self.rear_hit = {}  # v48: mech id -> last time it hit us in the rear
         self.fstrafe = 1.0
         self.fstrafe_until = 0.0
         self.strafe = 1.0
@@ -238,6 +242,8 @@ class Bot:
             if d_me < 220 and abs(wrap(m["aim"][0] - to_me)) < (0.25 if m.get("charging") else 0.12):
                 self.hostile[m["id"]] = t
         for e in obs.get("events", []):
+            if V48_REARFACE and e["type"] == "damaged" and e.get("rear") and e.get("by") is not None and e["by"] < 100:
+                self.rear_hit[e["by"]] = t
             if e["type"] == "damaged" and e.get("by") is not None and e["by"] < 100:
                 self.hostile[e["by"]] = t
                 self.hit_me[e["by"]] = t
@@ -315,6 +321,8 @@ class Bot:
                     score -= 40
                 if closing > 3:
                     score -= 15
+                if V48_REARFACE and t - self.rear_hit.get(m["id"], -99.0) < 3.0:
+                    score -= 150
             elif V27_FOCUS:
                 hp_m = m.get("hp", 1400)
                 score = d + 0.18 * hp_m + (0 if vis else 150)
